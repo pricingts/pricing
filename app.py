@@ -96,17 +96,13 @@ if st.session_state["completed"]:
                 change_page("client_name")
 
         st.button("Next", on_click=handle_next)
-        
 
     elif st.session_state["page"] == "client_name":
 
         sales_rep = st.session_state.get("sales_rep", "-- Sales Representative --")
         st.subheader(f"Hello, {sales_rep}!")
 
-        client = st.text_input(
-        "Who is your client?", 
-        key="client_input"
-            )
+        client = st.text_input("Who is your client?", key="client_input")
 
         def handle_next_client():
             if not client or not client:
@@ -116,7 +112,7 @@ if st.session_state["completed"]:
                 change_page("add_services")
 
         st.button("Next", on_click=handle_next_client)
-            
+
     elif st.session_state["page"] == "add_services":
 
         service = st.selectbox(
@@ -276,8 +272,15 @@ if st.session_state["completed"]:
         if st.session_state["services"]:
             st.subheader("Requested Services")
 
-            for idx, service in enumerate(st.session_state["services"]):
-                st.write(f"{idx + 1}. {service['service']}")
+            col1, col2 = st.columns(2)
+
+            with col1:
+                for idx, service in enumerate(st.session_state["services"]):
+                    st.write(f"{idx + 1}. {service['service']}")
+            
+            with col2:
+                for idx, service in enumerate(st.session_state["services"]):
+                    st.button(f"Edit Service", key=f"edit_button_{idx}")
 
             col1, col2 = st.columns(2)
 

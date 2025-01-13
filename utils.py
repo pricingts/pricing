@@ -61,19 +61,26 @@ def folder(request_id):
 
     return folder_id
 
-def route():
-    origin = st.text_input("Port of Origin/ Pick up Address/ Country of Origin", key="origen")
-    zip_code_origin = st.text_input("Zip Code (optional)", key="codigo_postal_origen")
-    destination = st.text_input("Port of Destination/ Delivery Address/ Country of Destination", key="destino")
-    zip_code_destination = st.text_input("Zip Code (optional)", key="codigo_postal_destino")
-    commodity = st.text_input("Commodity", key="commodity")
-    return{
+@st.cache_data(ttl=3600, show_spinner=False)
+def process_route_data(origin, zip_code_origin, destination, zip_code_destination, commodity):
+    return {
         "origin": origin,
         "zip_code_origin": zip_code_origin,
         "destination": destination,
         "zip_code_destination": zip_code_destination,
         "commodity": commodity
     }
+
+def route():
+    origin = st.text_input("Port of Origin/ Pick up Address/ Country of Origin", key="origen")
+    zip_code_origin = st.text_input("Zip Code (optional)", key="codigo_postal_origen")
+    destination = st.text_input("Port of Destination/ Delivery Address/ Country of Destination", key="destino")
+    zip_code_destination = st.text_input("Zip Code (optional)", key="codigo_postal_destino")
+    commodity = st.text_input("Commodity", key="commodity")
+
+    route_data = process_route_data(origin, zip_code_origin, destination, zip_code_destination, commodity)
+
+    return route_data
 
 def cargo(folder_id):
     commercial_invoice = st.file_uploader("Attach Commercial Invoice")
