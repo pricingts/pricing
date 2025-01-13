@@ -1,3 +1,4 @@
-/forms
-/temp
-/__pycache__
+/forms/
+/temp/
+/__pycache__/
+/secrets.toml
