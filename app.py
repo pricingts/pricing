@@ -1,15 +1,15 @@
 import streamlit as st
 import pandas as pd
-import uuid
 from google.oauth2.service_account import Credentials
 import gspread
 from utils import *
 import time
 
-
 sheet_id = st.secrets["general"]["sheet_id"]
 DRIVE_ID = st.secrets["general"]["drive_id"]
 PARENT_FOLDER_ID = st.secrets["general"]["parent_folder"]
+
+
 
 
 sheets_creds = Credentials.from_service_account_info(
@@ -52,7 +52,6 @@ def initialize_temp_details():
 def change_page(new_page):
     st.session_state["page"] = new_page
 
-
 #------------------------------------APP----------------------------------------
 
 initialize_state()
@@ -70,17 +69,14 @@ if "sales_rep" not in st.session_state:
 
 request_id = st.session_state["request_id"]
 
-# Crear una columna para centrar la imagen
 col1, col2, col3 = st.columns([1, 2, 1])
 
-# Usar la columna central para mostrar la imagen
 with col2:
     st.image("logo_trading.png", width=800)
 
 if st.session_state["completed"]:
 
-
-    st.write(f"Quotation ID: {request_id}")
+    st.write(f"**Quotation ID: {request_id}**")
 
     if st.session_state["page"] == "select_sales_rep":
 
@@ -102,7 +98,6 @@ if st.session_state["completed"]:
 
         st.button("Next", on_click=handle_next)
         
-
 
     elif st.session_state["page"] == "client_name":
 
@@ -155,9 +150,12 @@ if st.session_state["completed"]:
     #------------------------------------INTERNATIONAL FREIGHT----------------------------
         if service == "International Freight":
             st.subheader("International Freight")
-
+            
             transport_type = st.selectbox("Transport Type", ["Maritime", "Air"], key="transport_type")
+            st.session_state["temp_details"]["transport_type"] = transport_type
+
             modality = st.selectbox("Modality", ["FCL", "LCL"], key="modality")
+            st.session_state["temp_details"]["modality"] = modality
 
             if modality == "FCL": #FCL
                 with st.expander("**Cargo Details**"):
@@ -167,10 +165,10 @@ if st.session_state["completed"]:
 
                     if common_details["type_container"] in ["Reefer 20'", "Reefer 40'"]:
                         st.markdown("**-----Refrigerated Cargo Details-----**")
-                        refrigerated_cargo = handle_refrigerated_cargo()
+                        refrigerated_cargo = handle_refrigerated_cargo(common_details["type_container"])
                         st.session_state["temp_details"].update(refrigerated_cargo)
-                
-                with st.expander("**Incoterm Selection and Specific Questions**"):
+
+                with st.expander("**Incoterm Selection**"):
                     incoterm = st.selectbox(
                         "Select Incoterm",
                         ["EXW", "FOB", "CIF", "DAP", "FCA", "CFR", "DDP"],
@@ -196,7 +194,7 @@ if st.session_state["completed"]:
 
             if modality == "LCL": # LCL
                 with st.expander("**Cargo Details**"):
-                    lcl_details = lcl_questions(folder_id)
+                    lcl_details = lcl_questions(folder_id, service)
                     st.session_state["temp_details"].update(lcl_details)
 
                 with st.expander("**Incoterm Selection and Specific Questions**"):
@@ -227,24 +225,8 @@ if st.session_state["completed"]:
             st.subheader("Ground Transportation")
 
             with st.expander("**Cargo Details**"):
-                lcl_details = lcl_questions(folder_id)
+                lcl_details = lcl_questions(folder_id, service)
                 st.session_state["temp_details"].update(lcl_details)
-
-                ground_service = st.selectbox(
-                    "Select Ground Service",
-                    ["Drayage 20 STD", "Drayage 40 STD/40HQ", "FTL 53 FT", "Flat Bed", "Box Truck",
-                    "Drayage Reefer 20 STD", "Drayage Reefer 40 STD", "Mula Carpa", "Thermo King", "LTL"],
-                    key="ground_service"
-                )
-
-                if ground_service:
-                    st.session_state["temp_details"]["ground_service"] = ground_service
-
-                    if "THERMO KING" in ground_service.upper():
-
-                        st.markdown("**-----Refrigerated Cargo Details-----**")
-                        thermo_type = st.radio("Specify the type", ["Refrigerated", "Frozen"], key="thermo_type")
-                        st.session_state["temp_details"]["thermo_type"] = thermo_type
 
             with st.expander("**Incoterm Selection and Specific Questions**"):
                 incoterm = st.selectbox(
@@ -366,7 +348,6 @@ if st.session_state["completed"]:
                                 ignore_index=True
                             )
                             save_to_google_sheets(st.session_state["df_customs"], "Customs", sheet_id)
-
 
                         del st.session_state["request_id"]
                         st.session_state["services"] = []
