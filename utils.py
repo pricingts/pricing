@@ -5,6 +5,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import os
 
+
 freight_columns = [
     "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", "type_container",
     "reinforced", "suitable_food", "imo_cargo", "un_code", "msds", "fruit", "type_fruit", "positioning", "pickup_city",
@@ -295,7 +296,7 @@ def lcl_questions(folder_id, service):
         dimensions_info = dimensions()
     else:
         dimensions_info = dimensions()
-        
+
     lcl_description = st.text_area("Weight information for each piece, number of pieces, and dimensions per piece.")
     stackable = st.checkbox("Are the pieces stackable?")
     imo_info = imo_questions(folder_id)
