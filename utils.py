@@ -5,6 +5,27 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import os
 
+freight_columns = [
+    "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", "type_container",
+    "reinforced", "suitable_food", "imo_cargo", "un_code", "msds", "fruit", "type_fruit", "positioning", "pickup_city",
+    "lcl_fcl_mode", "fcl_lcl_mode",  "reefer_cont_type", "pickup_thermo_king", "pickup_address", "drayage_reefer", "drayage_address",
+    "delivery_address", "destination_costs", "value", "commercial_invoice_link",
+    "packing_list_link", "weight", 
+]
+
+transport_columns = [
+    "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", 
+    "ground_service", "thermo_type",  "weigth_lcl", "volume", "length", "width", "depth", "lcl_description", "stackable", 
+    "imo_cargo", "un_code", "msds", "commercial_invoice_link", "packing_list_link", "pickup_address", "delivery_address",
+    "destination_costs", "value"
+]
+
+customs_columns = [
+    "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity",
+    "commercial_invoice_link", "packing_list_link", "weight", "volume", "length", "width", "depth", "cargo_value", "hs_code", "technical_sheet"
+]
+
+
 sheet_id = st.secrets["general"]["sheet_id"]
 DRIVE_ID = st.secrets["general"]["drive_id"]
 PARENT_FOLDER_ID = st.secrets["general"]["parent_folder"]
@@ -41,9 +62,9 @@ def folder(request_id):
 
 
 def route():
-    origin = st.text_input("Port of Origin", key="origen")
+    origin = st.text_input("Port of Origin/ Pick up Address/ Country of Origin", key="origen")
     zip_code_origin = st.text_input("Zip Code (optional)", key="codigo_postal_origen")
-    destination = st.text_input("Port of Destination", key="destino")
+    destination = st.text_input("Port of Destination/ Delivery Address/ Country of Destination", key="destino")
     zip_code_destination = st.text_input("Zip Code (optional)", key="codigo_postal_destino")
     commodity = st.text_input("Commodity", key="commodity")
     return{
@@ -90,11 +111,11 @@ def cargo(folder_id):
 
 
 def dimensions():
-    weight_lcl = st.number_input("Cargo weight")
+    weight_lcl = st.number_input("Cargo weight (KG)")
     volume = st.number_input("Pallet volume")
-    length = st.number_input("Pallet length")
-    width = st.number_input("Pallet width")
-    depth = st.number_input("Pallet depth")
+    length = st.number_input("Pallet length (CM)")
+    width = st.number_input("Pallet width (CM)")
+    depth = st.number_input("Pallet depth (CM)")
 
     return{
         "weigth_lcl": weight_lcl,
@@ -159,17 +180,26 @@ def common_questions(folder_id):
     }
 
 
-def handle_refrigerated_cargo():
-    pickup_thermo_king = st.radio("Thermo King Pickup?", ["Yes", "No"], key="pickup_thermo_king")
-    thermo_type = None
+def handle_refrigerated_cargo(cont_type):
+    reefer_cont_type = None
+    if cont_type == "Reefer 40'":
+        reefer_cont_type = st.radio("Specify the type", ["Controlled Atmosphere", "Cold Treatment"], key="reefer_type")
+
+    pickup_thermo_king = st.radio("Thermo King Pick up?", ["Yes", "No"], key="pickup_thermo_king")
+    pickup_address, drayage_address = None, None
+
     if pickup_thermo_king == "Yes":
-        thermo_type = st.radio("Specify the type", ["Refrigerated", "Frozen"], key="thermo_type")
-    pickup_drayage_reefer = st.radio("Drayage Reefer Pickup?", ["Yes", "No"], key="pickup_drayage_reefer")
-    temp_control = st.checkbox("Requires temperature control?")
+        pickup_address = st.text_input("Pick up Adress", key="pickup_address")
+    drayage_reefer = st.radio("Drayage Reefer?", ["Yes", "No"], key="pickup_drayage_reefer")
+    if drayage_reefer == "Yes":
+        drayage_address = st.text_input("Drayage Address", key="drayage_address")
+
     return {
-        "pickup_thermo_king": {"response": pickup_thermo_king, "type": thermo_type},
-        "pickup_drayage_reefer": pickup_drayage_reefer,
-        "temp_control": temp_control
+        "reefer_cont_type": reefer_cont_type,
+        "pickup_thermo_king": pickup_thermo_king,
+        "pickup_address": pickup_address,
+        "drayage_reefer": drayage_reefer,
+        "drayage_address": drayage_address,
     }
 
 def insurance_questions(folder_id):
@@ -203,7 +233,6 @@ def imo_questions(folder_id):
         msds = st.file_uploader("Attach MSDS", key="msds")
 
         if msds:
-
             if msds.name not in st.session_state["uploaded_files"]:
                 _, msds_link = upload_file_to_folder(msds, folder_id)
                 if msds_link:
@@ -237,7 +266,9 @@ def questions_by_incoterm(incoterm, details, folder_id):
         delivery_address = st.text_input("Delivery Address")
         destination_costs = st.radio("Do you require destination cost quotation?", ["Yes", "No"])
         value = st.number_input("Enter the cargo value")
+
         details.update({
+            "incoterm": incoterm,
             **cargo_details,
             "pickup_address": pickup_address,
             "delivery_address": delivery_address,
@@ -248,15 +279,31 @@ def questions_by_incoterm(incoterm, details, folder_id):
     return details
 
 
-def lcl_questions(folder_id):
+def lcl_questions(folder_id, service):
     route_info = route()
-    dimensions_info = dimensions()
+    ground_service, thermo_type = None, None
+    if service == "Ground Transportation":
+        ground_service = st.selectbox(
+                    "Select Ground Service",
+                    ["Drayage 20 STD", "Drayage 40 STD/40HQ", "FTL 53 FT", "Flat Bed", "Box Truck",
+                    "Drayage Reefer 20 STD", "Drayage Reefer 40 STD", "Mula Carpa", "Thermo King", "LTL"],
+                    key="ground_service"
+        )
+        if ground_service == "Thermo King":
+            thermo_type = st.radio("Specify the type", ["Refrigerated", "Frozen"], key="thermo_type")
+        st.markdown("**Note: if LTL please enter the following information, otherwise continue.**")
+        dimensions_info = dimensions()
+    else:
+        dimensions_info = dimensions()
+        
     lcl_description = st.text_area("Weight information for each piece, number of pieces, and dimensions per piece.")
     stackable = st.checkbox("Are the pieces stackable?")
     imo_info = imo_questions(folder_id)
 
     return {
         **route_info,
+        "ground_service": ground_service,
+        "thermo_type": thermo_type,
         **dimensions_info,
         "lcl_description": lcl_description,
         "stackable": stackable,
@@ -282,14 +329,34 @@ def save_to_google_sheets(dataframe, sheet_name, sheet_id):
         try:
             worksheet = sheet.worksheet(sheet_name)
             if worksheet.row_count == 0:
-                worksheet.append_row(dataframe.columns.tolist())
+                if sheet_name == "Freight":
+                    worksheet.append_row(freight_columns)
+                elif sheet_name == "Ground Transport":
+                    worksheet.append_row(transport_columns)
+                elif sheet_name == "Customs":
+                    worksheet.append_row(customs_columns)
+
         except gspread.exceptions.WorksheetNotFound:
             worksheet = sheet.add_worksheet(title=sheet_name, rows="1000", cols="20")
-            worksheet.append_row(dataframe.columns.tolist())
+        
+            if sheet_name == "Freight":
+                worksheet.append_row(freight_columns)
+            elif sheet_name == "Ground Transport":
+                worksheet.append_row(transport_columns)
+            elif sheet_name == "Customs":
+                worksheet.append_row(customs_columns)
 
-        new_data = dataframe.values.tolist()
+        if sheet_name == "Freight":
+            dataframe = dataframe.reindex(columns=freight_columns)
+        elif sheet_name == "Ground Transport":
+            dataframe = dataframe.reindex(columns=transport_columns)
+        elif sheet_name == "Customs":
+            dataframe = dataframe.reindex(columns=customs_columns)
 
-        worksheet.append_rows(new_data, table_range="A1")
+        new_data = dataframe.fillna("").values.tolist()
+
+        worksheet.append_rows(new_data, table_range="A2")
+
     except Exception as e:
         st.error(f"Failed to save data to Google Sheets: {e}")
 
