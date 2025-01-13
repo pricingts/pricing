@@ -11,9 +11,6 @@ sheet_id = st.secrets["general"]["sheet_id"]
 DRIVE_ID = st.secrets["general"]["drive_id"]
 PARENT_FOLDER_ID = st.secrets["general"]["parent_folder"]
 
-
-
-
 sheets_creds = Credentials.from_service_account_info(
     st.secrets["google_sheets_credentials"],
     scopes=[
@@ -161,7 +158,7 @@ if st.session_state["completed"]:
 
             if modality == "FCL": #FCL
                 with st.expander("**Cargo Details**"):
-                
+
                     common_details = common_questions(folder_id)
                     st.session_state["temp_details"].update(common_details)
 

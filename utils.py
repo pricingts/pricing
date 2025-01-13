@@ -7,7 +7,7 @@ import os
 
 
 freight_columns = [
-    "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", "type_container",
+    "request_id","commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", "type_container",
     "reinforced", "suitable_food", "imo_cargo", "un_code", "msds", "fruit", "type_fruit", "positioning", "pickup_city",
     "lcl_fcl_mode", "fcl_lcl_mode",  "reefer_cont_type", "pickup_thermo_king", "pickup_address", "drayage_reefer", "drayage_address",
     "delivery_address", "destination_costs", "value", "commercial_invoice_link",
@@ -15,14 +15,14 @@ freight_columns = [
 ]
 
 transport_columns = [
-    "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", 
+    "request_id","commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", 
     "ground_service", "thermo_type",  "weigth_lcl", "volume", "length", "width", "depth", "lcl_description", "stackable", 
     "imo_cargo", "un_code", "msds", "commercial_invoice_link", "packing_list_link", "pickup_address", "delivery_address",
     "destination_costs", "value"
 ]
 
 customs_columns = [
-    "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity",
+    "request_id","commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity",
     "commercial_invoice_link", "packing_list_link", "weight", "volume", "length", "width", "depth", "cargo_value", "hs_code", "technical_sheet"
 ]
 
@@ -61,7 +61,7 @@ def folder(request_id):
 
     return folder_id
 
-
+@st.cache_data(ttl=3600, show_spinner=False)
 def route():
     origin = st.text_input("Port of Origin/ Pick up Address/ Country of Origin", key="origen")
     zip_code_origin = st.text_input("Zip Code (optional)", key="codigo_postal_origen")
@@ -76,6 +76,7 @@ def route():
         "commodity": commodity
     }
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def cargo(folder_id):
     commercial_invoice = st.file_uploader("Attach Commercial Invoice")
     packing_list = st.file_uploader("Attach Packing List")
@@ -110,7 +111,7 @@ def cargo(folder_id):
         "weight": weight
     }
 
-
+@st.cache_data(ttl=3600, show_spinner=False)
 def dimensions():
     weight_lcl = st.number_input("Cargo weight (KG)")
     volume = st.number_input("Pallet volume")
@@ -126,7 +127,7 @@ def dimensions():
         "depth": depth,
     }
 
-
+@st.cache_data(ttl=3600, show_spinner=False)
 def common_questions(folder_id):
     p_ruta = route()
     type_container = st.selectbox(
@@ -180,7 +181,7 @@ def common_questions(folder_id):
         "fcl_lcl_mode": fcl_lcl_mode,
     }
 
-
+@st.cache_data(ttl=3600, show_spinner=False)
 def handle_refrigerated_cargo(cont_type):
     reefer_cont_type = None
     if cont_type == "Reefer 40'":
@@ -203,6 +204,7 @@ def handle_refrigerated_cargo(cont_type):
         "drayage_address": drayage_address,
     }
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def insurance_questions(folder_id):
     cargo_value = st.number_input("Cargo Value (USD)")
     hs_code = st.text_input("HS Code")
@@ -224,7 +226,7 @@ def insurance_questions(folder_id):
         "technical_sheet": technical_sheet_link
     }
 
-
+@st.cache_data(ttl=3600, show_spinner=False)
 def imo_questions(folder_id):
     imo_cargo = st.checkbox("Is it considered IMO?", key="imo_cargo")
     un_code, msds, msds_link = None, None, None
@@ -246,6 +248,7 @@ def imo_questions(folder_id):
         "msds": msds_link
     }
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def questions_by_incoterm(incoterm, details, folder_id):
     if incoterm == "EXW":
         pickup_address = st.text_input("Pickup Address")
@@ -279,7 +282,7 @@ def questions_by_incoterm(incoterm, details, folder_id):
 
     return details
 
-
+@st.cache_data(ttl=3600, show_spinner=False)
 def lcl_questions(folder_id, service):
     route_info = route()
     ground_service, thermo_type = None, None
@@ -311,6 +314,7 @@ def lcl_questions(folder_id, service):
         **imo_info
     }
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def customs_questions(folder_id):
     route_info = route()
     cargo_info = cargo(folder_id)
