@@ -1,4 +1,4 @@
 /forms/
 /temp/
-/__pycache__
-.streamlit/secrets.toml
+/__pycache__/
+.streamlit/secrets.toml/
