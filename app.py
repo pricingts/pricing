@@ -3,9 +3,9 @@ import pandas as pd
 from google.oauth2.service_account import Credentials
 import gspread
 from utils import *
-import time
 from googleapiclient.discovery import build
-
+import time
+import datetime
 
 sheet_id = st.secrets["general"]["sheet_id"]
 DRIVE_ID = st.secrets["general"]["drive_id"]
@@ -61,7 +61,7 @@ if "request_id" not in st.session_state:
     st.session_state["request_id"] = f"Q{timestamp}"
 
 if "uploaded_files" not in st.session_state:
-        st.session_state["uploaded_files"] = {}
+    st.session_state["uploaded_files"] = {}
 
 if "sales_rep" not in st.session_state:
     st.session_state["sales_rep"] = "-- Sales Representative --"
@@ -74,6 +74,8 @@ with col2:
     st.image("logo_trading.png", width=800)
 
 if st.session_state["completed"]:
+
+    start_time = datetime.datetime.now()
 
     st.write(f"**Quotation ID: {request_id}**")
 
@@ -136,8 +138,9 @@ if st.session_state["completed"]:
         service = st.session_state["temp_details"]["service"]
 
         if "folder_id" not in st.session_state or st.session_state["folder_request_id"] != request_id:
-            folder_id = folder(request_id)
+            folder_id, folder_link = folder(request_id)
             st.session_state["folder_id"] = folder_id
+            st.session_state["folder_link"] = folder_link
             st.session_state["folder_request_id"] = request_id
         
         folder_id = st.session_state.get("folder_id", "No folder created")
@@ -251,7 +254,7 @@ if st.session_state["completed"]:
             st.subheader("Customs Brokerage")
 
             with st.expander("**Customs Details**"):
-                customs_details = customs_questions(folder_id)
+                customs_details = customs_questions(folder_id, service)
                 st.session_state["temp_details"].update(customs_details)
 
             def handle_add_service():
@@ -304,8 +307,14 @@ if st.session_state["completed"]:
                 if st.button("Finalize Quotation"):
                     if st.session_state["services"]:
 
+                        end_time = datetime.datetime.now()
+                        duration = (end_time - start_time).total_seconds()
+                        end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S')
+                        log_time(start_time, end_time, duration)
+
                         commercial = st.session_state.get("sales_rep", "Unknown")
                         client = st.session_state["client"]
+                        folder_link = st.session_state.get("folder_link", "N/A")
 
                         freight_records = []
                         ground_transport_records = []
@@ -313,7 +322,8 @@ if st.session_state["completed"]:
 
                         for service in st.session_state["services"]:
                             base_info = {
-                                "request_id": request_id,
+                                "time": end_time_str,
+                                "request_id": f'=HYPERLINK("{folder_link}"; "{request_id}")',
                                 "commercial": commercial,
                                 "client": st.session_state["client"],
                                 "service": service["service"],
@@ -350,6 +360,7 @@ if st.session_state["completed"]:
                                 ignore_index=True
                             )
                             save_to_google_sheets(st.session_state["df_customs"], "Customs", sheet_id)
+                        
 
                         del st.session_state["request_id"]
                         st.session_state["services"] = []
@@ -358,6 +369,3 @@ if st.session_state["completed"]:
 
                     else:
                         st.warning("No services have been added to finalize the quotation.")
-                        
-
-
