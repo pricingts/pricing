@@ -4,31 +4,33 @@ import gspread
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import os
+import csv
 
 
 freight_columns = [
-    "request_id","commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", "type_container",
-    "reinforced", "suitable_food", "imo_cargo", "un_code", "msds", "fruit", "type_fruit", "positioning", "pickup_city",
+    "request_id", "time", "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", "type_container",
+    "reinforced", "suitable_food", "imo_cargo", "un_code", "msds", "fruit", "type_fruit", "positioning", "pickup_city", 
+    "ground_service", "thermo_type", "weigth_lcl", "volume", "length", "width", "depth", "lcl_description", "stackable",
     "lcl_fcl_mode", "fcl_lcl_mode",  "reefer_cont_type", "pickup_thermo_king", "pickup_address", "drayage_reefer", "drayage_address",
-    "delivery_address", "destination_costs", "value", "commercial_invoice_link",
-    "packing_list_link", "weight", 
+    "delivery_address", "destination_costs", "cargo_value", "commercial_invoice_link",
+    "packing_list_link", "weight"
 ]
 
 transport_columns = [
-    "request_id","commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", 
+    "request_id", "time", "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", 
     "ground_service", "thermo_type",  "weigth_lcl", "volume", "length", "width", "depth", "lcl_description", "stackable", 
     "imo_cargo", "un_code", "msds", "commercial_invoice_link", "packing_list_link", "pickup_address", "delivery_address",
-    "destination_costs", "value"
+    "destination_costs", "cargo_value"
 ]
 
 customs_columns = [
-    "request_id","commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity",
-    "commercial_invoice_link", "packing_list_link", "weight", "volume", "length", "width", "depth", "cargo_value", "hs_code", "technical_sheet"
+    "request_id", "time", "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity",
+    "commercial_invoice_link", "packing_list_link", "weight", "volume", "length", "width", "depth", "cargo_value", "hs_code", "technical_sheet", "freight_cost", "insurance_cost", "origin_certificate"
 ]
-
 
 sheet_id = st.secrets["general"]["sheet_id"]
 DRIVE_ID = st.secrets["general"]["drive_id"]
+time_sheet_id = st.secrets["general"]["time_sheet_id"]
 PARENT_FOLDER_ID = st.secrets["general"]["parent_folder"]
 
 sheets_creds= Credentials.from_service_account_info(
@@ -57,9 +59,10 @@ def folder(request_id):
         if not folder_id:
             st.error("Failed to create folder for this request.")
         else:
+            folder_link = f"https://drive.google.com/drive/folders/{folder_id}"
             st.success(f"Folder created for this request")
 
-    return folder_id
+    return folder_id, folder_link
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def process_route_data(origin, zip_code_origin, destination, zip_code_destination, commodity):
@@ -82,46 +85,81 @@ def route():
 
     return route_data
 
-def cargo(folder_id):
-    commercial_invoice = st.file_uploader("Attach Commercial Invoice")
-    packing_list = st.file_uploader("Attach Packing List")
-    weight = st.number_input("Weight")
+def cargo(folder_id, service):
+    weight = None
+    if service == "Customs Brokerage":
+        commercial_invoice = st.file_uploader("Attach Commercial Invoice")
+        packing_list = st.file_uploader("Attach Packing List")
 
-    commercial_invoice_link = None
-    packing_list_link = None
+        commercial_invoice_link = None
+        packing_list_link = None
 
-    if commercial_invoice:
+        if commercial_invoice:
 
-        if commercial_invoice.name not in st.session_state["uploaded_files"]:
-            _, commercial_invoice_link = upload_file_to_folder(commercial_invoice, folder_id)
-            if commercial_invoice_link:
-                st.session_state["uploaded_files"][commercial_invoice.name] = commercial_invoice_link
-                st.success(f"Commercial Invoice uploaded successfully: [View File]({commercial_invoice_link})")
-        else:
-            commercial_invoice_link = st.session_state["uploaded_files"][commercial_invoice.name]
+            if commercial_invoice.name not in st.session_state["uploaded_files"]:
+                _, commercial_invoice_link = upload_file_to_folder(commercial_invoice, folder_id)
+                if commercial_invoice_link:
+                    st.session_state["uploaded_files"][commercial_invoice.name] = commercial_invoice_link
+                    st.success(f"Commercial Invoice uploaded successfully: [View File]({commercial_invoice_link})")
+            else:
+                commercial_invoice_link = st.session_state["uploaded_files"][commercial_invoice.name]
 
-    if packing_list:
+        if packing_list:
 
-        if packing_list.name not in st.session_state["uploaded_files"]:
-            _, packing_list_link = upload_file_to_folder(packing_list, folder_id)
-            if packing_list_link:
-                st.session_state["uploaded_files"][packing_list.name] = packing_list_link
-                st.success(f"Packing List uploaded successfully: [View File]({packing_list_link})")
-        else: 
-            packing_list_link = st.session_state["uploaded_files"][packing_list.name]
+            if packing_list.name not in st.session_state["uploaded_files"]:
+                _, packing_list_link = upload_file_to_folder(packing_list, folder_id)
+                if packing_list_link:
+                    st.session_state["uploaded_files"][packing_list.name] = packing_list_link
+                    st.success(f"Packing List uploaded successfully: [View File]({packing_list_link})")
+            else: 
+                packing_list_link = st.session_state["uploaded_files"][packing_list.name]
 
-    return {
-        "commercial_invoice_link": commercial_invoice_link,
-        "packing_list_link": packing_list_link,
-        "weight": weight
-    }
+        return {
+            "commercial_invoice_link": commercial_invoice_link,
+            "packing_list_link": packing_list_link,
+            "weight": weight
+        }
+    
+    else: 
+        commercial_invoice = st.file_uploader("Attach Commercial Invoice")
+        packing_list = st.file_uploader("Attach Packing List")
+        weight = st.number_input("Weight")
+
+        commercial_invoice_link = None
+        packing_list_link = None
+
+        if commercial_invoice:
+
+            if commercial_invoice.name not in st.session_state["uploaded_files"]:
+                _, commercial_invoice_link = upload_file_to_folder(commercial_invoice, folder_id)
+                if commercial_invoice_link:
+                    st.session_state["uploaded_files"][commercial_invoice.name] = commercial_invoice_link
+                    st.success(f"Commercial Invoice uploaded successfully: [View File]({commercial_invoice_link})")
+            else:
+                commercial_invoice_link = st.session_state["uploaded_files"][commercial_invoice.name]
+
+        if packing_list:
+
+            if packing_list.name not in st.session_state["uploaded_files"]:
+                _, packing_list_link = upload_file_to_folder(packing_list, folder_id)
+                if packing_list_link:
+                    st.session_state["uploaded_files"][packing_list.name] = packing_list_link
+                    st.success(f"Packing List uploaded successfully: [View File]({packing_list_link})")
+            else: 
+                packing_list_link = st.session_state["uploaded_files"][packing_list.name]
+
+        return {
+            "commercial_invoice_link": commercial_invoice_link,
+            "packing_list_link": packing_list_link,
+            "weight": weight
+            }
 
 def dimensions():
-    weight_lcl = st.number_input("Cargo weight (KG)")
-    volume = st.number_input("Pallet volume")
-    length = st.number_input("Pallet length (CM)")
-    width = st.number_input("Pallet width (CM)")
-    depth = st.number_input("Pallet depth (CM)")
+    weight_lcl = st.number_input("Cargo weight (KG)", value=None)
+    volume = st.number_input("Pallet volume", value=None)
+    length = st.number_input("Pallet length (CM)", value=None)
+    width = st.number_input("Pallet width (CM)", value=None)
+    depth = st.number_input("Pallet depth (CM)", value=None)
 
     return{
         "weigth_lcl": weight_lcl,
@@ -148,8 +186,8 @@ def common_questions(folder_id):
         ],
         key="type_container"
     )
-    reinforced = st.checkbox("Should it be reinforced?", key="reforzado")
-    suitable_food = st.checkbox("Suitable for foodstuffs?", key="apto_alimentos")
+    reinforced = st.checkbox("Should it be reinforced?", key="reinforced")
+    suitable_food = st.checkbox("Suitable for foodstuffs?", key="suitable_food")
 
     p_imo = imo_questions(folder_id)
     fruit = st.checkbox("Is it fruit?", key="fruit")
@@ -207,7 +245,7 @@ def handle_refrigerated_cargo(cont_type):
     }
 
 def insurance_questions(folder_id):
-    cargo_value = st.number_input("Cargo Value (USD)")
+    cargo_value = st.number_input("Cargo Value (USD)", value=None)
     hs_code = st.text_input("HS Code")
     technical_sheet = st.file_uploader("Attach technical sheet")
 
@@ -268,7 +306,7 @@ def questions_by_incoterm(incoterm, details, folder_id):
         pickup_address = st.text_input("Pickup Address")
         delivery_address = st.text_input("Delivery Address")
         destination_costs = st.radio("Do you require destination cost quotation?", ["Yes", "No"])
-        value = st.number_input("Enter the cargo value")
+        cargo_value = st.number_input("Cargo Value (USD)", value=None)
 
         details.update({
             "incoterm": incoterm,
@@ -276,7 +314,7 @@ def questions_by_incoterm(incoterm, details, folder_id):
             "pickup_address": pickup_address,
             "delivery_address": delivery_address,
             "destination_costs": destination_costs,
-            "value": value
+            "cargo_value": cargo_value
         })
 
     return details
@@ -312,17 +350,23 @@ def lcl_questions(folder_id, service):
         **imo_info
     }
 
-def customs_questions(folder_id):
+def customs_questions(folder_id, service):
     route_info = route()
-    cargo_info = cargo(folder_id)
     dimensions_info = dimensions()
+    freight_cost = st.number_input("Freight Cost (USD)", value=None)
+    insurance_cost = st.number_input("Insurance Cost (USD)", value=None)
     insurance_info = insurance_questions(folder_id)
+    cargo_info = cargo(folder_id, service)
+    origin_certificate = st.file_uploader("Certificate of Origin")
 
     return {
         **route_info,
         **cargo_info,
         **dimensions_info,
-        **insurance_info
+        **insurance_info,
+        "freight_cost": freight_cost,
+        "insurance_cost": insurance_cost,
+        "origin_certificate": origin_certificate
     }
 
 def save_to_google_sheets(dataframe, sheet_name, sheet_id):
@@ -375,7 +419,11 @@ def create_folder(folder_name, parent_folder_id):
             fields='id',
             supportsAllDrives=True 
         ).execute()
-        return folder.get('id')
+        folder_id = folder.get('id')
+        folder_link = f"https://drive.google.com/drive/folders/{folder_id}"
+
+        return folder_id, folder_link
+    
     except Exception as e:
         st.error(f"Failed to create folder: {e}")
         return None
@@ -461,9 +509,30 @@ def create_folder(folder_name, parent_folder_id):
             supportsAllDrives=True
         ).execute()
         
-        return folder.get('id')
+        folder_id = folder.get('id')
+
+        return folder_id
+    
     except Exception as e:
         st.error(f"Failed to create folder: {e}")
-        return None
+        return None, None
 
+def log_time(start_time, end_time, duration):
+    sheet_name = "Timestamp"
+    try:
+        sheet = client_gcp.open_by_key(time_sheet_id)
+        try:
+            worksheet = sheet.worksheet(sheet_name)
+            start_time_str = start_time.strftime('%Y-%m-%d %H:%M:%S')
+            end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S')
+            worksheet.append_row([start_time_str, end_time_str, duration])
+        
+        except gspread.exceptions.WorksheetNotFound:
+            worksheet = sheet.add_worksheet(title=sheet_name, rows="1000", cols="20")
+            worksheet.append_row(["Start Time", "End Time", "Duration (seconds)"])
+            start_time_str = start_time.strftime('%Y-%m-%d %H:%M:%S')
+            end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S')
+            worksheet.append_row([start_time_str, end_time_str, duration])
 
+    except Exception as e:
+        st.error(f"Failed to save data to Google Sheets: {e}")
