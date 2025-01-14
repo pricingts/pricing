@@ -5,11 +5,13 @@ import gspread
 from utils import *
 from googleapiclient.discovery import build
 import time
-import datetime
+import pytz
+from datetime import datetime
 
 sheet_id = st.secrets["general"]["sheet_id"]
 DRIVE_ID = st.secrets["general"]["drive_id"]
 PARENT_FOLDER_ID = st.secrets["general"]["parent_folder"]
+time_sheet_id = st.secrets["general"]["time_sheet_id"]
 
 sheets_creds = Credentials.from_service_account_info(
     st.secrets["google_sheets_credentials"],
@@ -29,6 +31,7 @@ drive_creds = Credentials.from_service_account_info(
 drive_service = build('drive', 'v3', credentials=drive_creds)
 
 client_gcp = gspread.authorize(sheets_creds)
+colombia_timezone = pytz.timezone('America/Bogota')
 
 #--------------------------------------UTILITY FUNCTIONS--------------------------------
 
@@ -75,7 +78,7 @@ with col2:
 
 if st.session_state["completed"]:
 
-    start_time = datetime.datetime.now()
+    start_time = datetime.now(colombia_timezone)
 
     st.write(f"**Quotation ID: {request_id}**")
 
@@ -307,7 +310,7 @@ if st.session_state["completed"]:
                 if st.button("Finalize Quotation"):
                     if st.session_state["services"]:
 
-                        end_time = datetime.datetime.now()
+                        end_time = datetime.now(colombia_timezone)
                         duration = (end_time - start_time).total_seconds()
                         end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S')
                         log_time(start_time, end_time, duration)
