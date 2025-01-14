@@ -5,7 +5,8 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 import os
 import csv
-
+import pytz
+from datetime import datetime
 
 freight_columns = [
     "request_id", "time", "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", "type_container",
