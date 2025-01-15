@@ -7,6 +7,8 @@ import os
 import csv
 import pytz
 from datetime import datetime
+import json
+import os
 
 freight_columns = [
     "request_id", "time", "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", "type_container",
@@ -14,19 +16,19 @@ freight_columns = [
     "ground_service", "thermo_type", "weigth_lcl", "volume", "length", "width", "depth", "lcl_description", "stackable",
     "lcl_fcl_mode", "fcl_lcl_mode",  "reefer_cont_type", "pickup_thermo_king", "pickup_address", "drayage_reefer", "drayage_address",
     "delivery_address", "destination_costs", "cargo_value", "commercial_invoice_link",
-    "packing_list_link", "weight"
+    "packing_list_link", "weight", "final_comments"
 ]
 
 transport_columns = [
     "request_id", "time", "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity", 
     "ground_service", "thermo_type",  "weigth_lcl", "volume", "length", "width", "depth", "lcl_description", "stackable", 
     "imo_cargo", "un_code", "msds", "commercial_invoice_link", "packing_list_link", "pickup_address", "delivery_address",
-    "destination_costs", "cargo_value"
+    "destination_costs", "cargo_value", "final_comments"
 ]
 
 customs_columns = [
     "request_id", "time", "commercial", "service", "client", "incoterm", "transport_type", "modality", "origin", "zip_code_origin", "destination", "zip_code_destination", "commodity",
-    "commercial_invoice_link", "packing_list_link", "weight", "volume", "length", "width", "depth", "cargo_value", "hs_code", "technical_sheet", "freight_cost", "insurance_cost", "origin_certificate"
+    "commercial_invoice_link", "packing_list_link", "weight", "volume", "length", "width", "depth", "cargo_value", "hs_code", "technical_sheet", "freight_cost", "insurance_cost", "origin_certificate", "final_comments"
 ]
 
 sheet_id = st.secrets["general"]["sheet_id"]
@@ -76,12 +78,12 @@ def process_route_data(origin, zip_code_origin, destination, zip_code_destinatio
     }
 
 def route():
-    origin = st.text_input("Port of Origin/ Pick up Address/ Country of Origin", key="origen")
-    zip_code_origin = st.text_input("Zip Code (optional)", key="codigo_postal_origen")
-    destination = st.text_input("Port of Destination/ Delivery Address/ Country of Destination", key="destino")
-    zip_code_destination = st.text_input("Zip Code (optional)", key="codigo_postal_destino")
-    commodity = st.text_input("Commodity", key="commodity")
-
+    temp_details = st.session_state.get("temp_details", {})
+    origin = st.text_input("Port of Origin/ Pick up Address/ Country of Origin", key="origin", value=temp_details.get("origin", None))
+    zip_code_origin = st.text_input("Zip Code (optional)", key="zip_code_origin", value=temp_details.get("zip_code_origin", None))
+    destination = st.text_input("Port of Destination/ Delivery Address/ Country of Destination", key="destination", value=temp_details.get("destination", None))
+    zip_code_destination = st.text_input("Zip Code (optional)", key="zip_code_destination", value=temp_details.get("zip_code_destination", None))
+    commodity = st.text_input("Commodity", key="commodity", value=temp_details.get("commodity", None))
     route_data = process_route_data(origin, zip_code_origin, destination, zip_code_destination, commodity)
 
     return route_data
@@ -156,11 +158,13 @@ def cargo(folder_id, service):
             }
 
 def dimensions():
-    weight_lcl = st.number_input("Cargo weight (KG)", value=None)
-    volume = st.number_input("Pallet volume", value=None)
-    length = st.number_input("Pallet length (CM)", value=None)
-    width = st.number_input("Pallet width (CM)", value=None)
-    depth = st.number_input("Pallet depth (CM)", value=None)
+    temp_details = st.session_state.get("temp_details", {})
+
+    weight_lcl = st.number_input("Cargo weight (KG)", key="weight_lcl", value=temp_details.get("weight_lcl", None))
+    volume = st.number_input("Pallet volume", key="volume", value=temp_details.get("volume", None))
+    length = st.number_input("Pallet length (CM)", key="length", value=temp_details.get("volume", None))
+    width = st.number_input("Pallet width (CM)", key="width", value=temp_details.get("width", None))
+    depth = st.number_input("Pallet depth (CM)", key="depth", value=temp_details.get("depth", None))
 
     return{
         "weigth_lcl": weight_lcl,
@@ -171,6 +175,9 @@ def dimensions():
     }
 
 def common_questions(folder_id):
+
+    temp_details = st.session_state.get("temp_details", {})
+
     p_ruta = route()
     type_container = st.selectbox(
         "Type of container",
@@ -185,29 +192,31 @@ def common_questions(folder_id):
             "Flat Rack 20'",
             "Flat Rack 40'"
         ],
-        key="type_container"
+        key="type_container", index=["20' Dry Standard", "40' Dry Standard", "40' Dry High Cube", "Reefer 20'", "Reefer 40'", "Open Top 20'", "Open Top 40'", "Flat Rack 20'", "Flat Rack 40'"].index(temp_details.get("type_container", "20' Dry Standard"))
     )
-    reinforced = st.checkbox("Should it be reinforced?", key="reinforced")
-    suitable_food = st.checkbox("Suitable for foodstuffs?", key="suitable_food")
+    reinforced = st.checkbox("Should it be reinforced?", key="reinforced", value=temp_details.get("reinforced", False))
+    suitable_food = st.checkbox("Suitable for foodstuffs?", key="suitable_food", value=temp_details.get("suitable_food", False))
 
     p_imo = imo_questions(folder_id)
-    fruit = st.checkbox("Is it fruit?", key="fruit")
+    fruit = st.checkbox("Is it fruit?", key="fruit", value=temp_details.get("fruit", False))
     type_fruit = None
     if fruit:
-        type_fruit = st.text_input("Specify fruit type", key="type_fruit")
+        type_fruit = st.text_input("Specify fruit type", key="type_fruit", value=temp_details.get("type_fruit", False))
 
     positioning = st.radio(
-    "Container Positioning",
-    ["In yard", "At port", "Not Applicable"],
-    key="positioning"
+        "Container Positioning",
+        ["In yard", "At port", "Not Applicable"],
+    key="positioning", index=["In yard", "At port", "Not Applicable"].index(temp_details.get("positioning", "In yard"))
     )
-    pickup_city = None
+
+    pickup_city = temp_details.get("pickup_city", "")
+
     if positioning == "In yard":
-        pickup_city = st.text_input("Pickup City", key="pickup_city")
+        pickup_city = st.text_input("Pickup City", key="pickup_city", value=pickup_city)
 
-    lcl_fcl_mode = st.checkbox("Is it LCL-FCL mode?", key="lcl_fcl_mode")
+    lcl_fcl_mode = st.checkbox("Is it LCL-FCL mode?", key="lcl_fcl_mode", value=temp_details.get("lcl_fcl_mode", False))
 
-    fcl_lcl_mode = st.checkbox("Is it FCL-LCL mode?", key="fcl_lcl_mode")
+    fcl_lcl_mode = st.checkbox("Is it FCL-LCL mode?", key="fcl_lcl_mode", value=temp_details.get("fcl_lcl_mode", False))
 
     return {
         **p_ruta,
@@ -267,12 +276,24 @@ def insurance_questions(folder_id):
     }
 
 def imo_questions(folder_id):
-    imo_cargo = st.checkbox("Is it considered IMO?", key="imo_cargo")
+    temp_details = st.session_state.get("temp_details", {})
+    imo_cargo = st.checkbox(
+        "Is it considered IMO?", 
+        key="imo_cargo", 
+        value=temp_details.get("imo_cargo", False)
+    )
     un_code, msds, msds_link = None, None, None
 
     if imo_cargo:
-        un_code = st.text_input("UN Code", key="un_code")
-        msds = st.file_uploader("Attach MSDS", key="msds")
+        un_code = st.text_input(
+            "UN Code", 
+            key="un_code", 
+            value=temp_details.get("un_code", "")
+        )
+        msds = st.file_uploader(
+            "Attach MSDS", 
+            key="msds"
+        )
 
         if msds:
             if msds.name not in st.session_state["uploaded_files"]:
@@ -287,27 +308,57 @@ def imo_questions(folder_id):
         "msds": msds_link
     }
 
-def questions_by_incoterm(incoterm, details, folder_id):
+def questions_by_incoterm(incoterm, details, folder_id, service):
     if incoterm == "EXW":
-        pickup_address = st.text_input("Pickup Address")
+        pickup_address = st.text_input(
+            "Pickup Address",
+            key="pickup_address",
+            value=details.get("pickup_address", "")
+        )
         details["pickup_address"] = pickup_address
 
     elif incoterm == "FCA":
-        origin_customs_payer = st.radio("Origin Customs Payer", ["Shipper", "Consignee"])
+        origin_customs_payer = st.radio(
+            "Origin Customs Payer",
+            ["Shipper", "Consignee"],
+            key="origin_customs_payer",
+            index=["Shipper", "Consignee"].index(details.get("origin_customs_payer", "Shipper"))
+        )
         details["origin_customs_payer"] = origin_customs_payer
 
     elif incoterm in ["CIF", "CFR"]:
-        destination_costs = st.radio("Do you require destination cost quotation?", ["Yes", "No"])
-        insurance = insurance_questions(folder_id) 
-        details.update(insurance) 
+        destination_costs = st.radio(
+            "Do you require destination cost quotation?",
+            ["Yes", "No"],
+            key="destination_costs",
+            index=["Yes", "No"].index(details.get("destination_costs", "No"))
+        )
+        insurance = insurance_questions(folder_id)
+        details.update(insurance)
         details["destination_costs"] = destination_costs
 
     elif incoterm in ["DDP", "DAP"]:
-        cargo_details = cargo(folder_id)
-        pickup_address = st.text_input("Pickup Address")
-        delivery_address = st.text_input("Delivery Address")
-        destination_costs = st.radio("Do you require destination cost quotation?", ["Yes", "No"])
-        cargo_value = st.number_input("Cargo Value (USD)", value=None)
+        cargo_details = cargo(folder_id, service)
+        pickup_address = st.text_input(
+            "Pickup Address",
+            key="pickup_address",
+            value=details.get("pickup_address", "")
+        )
+        delivery_address = st.text_input(
+            "Delivery Address",
+            key="delivery_address",
+            value=details.get("delivery_address", "")
+        )
+        destination_costs = st.radio(
+            "Do you require destination cost quotation?",
+            ["Yes", "No"],
+            key="destination_costs",
+            index=["Yes", "No"].index(details.get("destination_costs", "No"))
+        )
+        cargo_value = st.number_input(
+            "Cargo Value (USD)",
+            value=details.get("cargo_value", 0)
+        )
 
         details.update({
             "incoterm": incoterm,
@@ -320,25 +371,46 @@ def questions_by_incoterm(incoterm, details, folder_id):
 
     return details
 
+
 def lcl_questions(folder_id, service):
+    temp_details = st.session_state.get("temp_details", {})
     route_info = route()
     ground_service, thermo_type = None, None
     if service == "Ground Transportation":
         ground_service = st.selectbox(
-                    "Select Ground Service",
-                    ["Drayage 20 STD", "Drayage 40 STD/40HQ", "FTL 53 FT", "Flat Bed", "Box Truck",
-                    "Drayage Reefer 20 STD", "Drayage Reefer 40 STD", "Mula Carpa", "Thermo King", "LTL"],
-                    key="ground_service"
+            "Select Ground Service",
+            [
+                "Drayage 20 STD", "Drayage 40 STD/40HQ", "FTL 53 FT", "Flat Bed", "Box Truck",
+                "Drayage Reefer 20 STD", "Drayage Reefer 40 STD", "Mula Carpa", "Thermo King", "LTL"
+            ],
+            key="ground_service",
+            index=[
+                "Drayage 20 STD", "Drayage 40 STD/40HQ", "FTL 53 FT", "Flat Bed", "Box Truck",
+                "Drayage Reefer 20 STD", "Drayage Reefer 40 STD", "Mula Carpa", "Thermo King", "LTL"
+            ].index(temp_details.get("ground_service", "Drayage 20 STD"))
         )
         if ground_service == "Thermo King":
-            thermo_type = st.radio("Specify the type", ["Refrigerated", "Frozen"], key="thermo_type")
+            thermo_type = st.radio(
+                "Specify the type",
+                ["Refrigerated", "Frozen"],
+                key="thermo_type",
+                index=["Refrigerated", "Frozen"].index(temp_details.get("thermo_type", "Refrigerated"))
+            )
         st.markdown("**Note: if LTL please enter the following information, otherwise continue.**")
         dimensions_info = dimensions()
     else:
         dimensions_info = dimensions()
 
-    lcl_description = st.text_area("Weight information for each piece, number of pieces, and dimensions per piece.")
-    stackable = st.checkbox("Are the pieces stackable?")
+    lcl_description = st.text_area(
+        "Weight information for each piece, number of pieces, and dimensions per piece.",
+        key="lcl_description",
+        value=temp_details.get("lcl_description", "")
+    )
+    stackable = st.checkbox(
+        "Are the pieces stackable?",
+        key="stackable",
+        value=temp_details.get("stackable", False)
+    )
     imo_info = imo_questions(folder_id)
 
     return {
@@ -352,13 +424,26 @@ def lcl_questions(folder_id, service):
     }
 
 def customs_questions(folder_id, service):
+    temp_details = st.session_state.get("temp_details", {})
+
     route_info = route()
     dimensions_info = dimensions()
-    freight_cost = st.number_input("Freight Cost (USD)", value=None)
-    insurance_cost = st.number_input("Insurance Cost (USD)", value=None)
+    freight_cost = st.number_input("Freight Cost (USD)", key="freight_cost", value=temp_details.get("freight_cost", None))
+    insurance_cost = st.number_input("Insurance Cost (USD)", key="insurance_cost", value=temp_details.get("insurance_cost", None))
     insurance_info = insurance_questions(folder_id)
     cargo_info = cargo(folder_id, service)
-    origin_certificate = st.file_uploader("Certificate of Origin")
+    origin_certificate = st.file_uploader("Certificate of Origin", key="origin_certificate")
+
+    origin_certificate_link= None
+
+    if origin_certificate:
+        if origin_certificate.name not in st.session_state["uploaded_files"]:
+            _, origin_certificate_link = upload_file_to_folder(origin_certificate, folder_id)
+            if origin_certificate_link:
+                st.session_state["uploaded_files"][origin_certificate.name] = origin_certificate_link
+                st.success(f"Origin Certificate uploaded successfully: [View File]({origin_certificate_link})")
+        else:
+            origin_certificate_link = st.session_state["uploaded_files"][origin_certificate.name]
 
     return {
         **route_info,
@@ -367,7 +452,7 @@ def customs_questions(folder_id, service):
         **insurance_info,
         "freight_cost": freight_cost,
         "insurance_cost": insurance_cost,
-        "origin_certificate": origin_certificate
+        "origin_certificate": origin_certificate_link
     }
 
 def save_to_google_sheets(dataframe, sheet_name, sheet_id):
@@ -441,7 +526,6 @@ def validate_shared_drive_folder(parent_folder_id):
     except Exception as e:
         st.error(f"Parent folder not found or inaccessible: {e}")
         return False
-    
 
 def upload_file_to_folder(file, folder_id):
     try:
@@ -491,8 +575,8 @@ def get_folder_id(folder_name, parent_folder_id):
         st.error(f"Failed to search for folder: {e}")
         return None
 
-def create_folder(folder_name, parent_folder_id):
 
+def create_folder(folder_name, parent_folder_id):
     existing_folder_id = get_folder_id(folder_name, parent_folder_id)
     if existing_folder_id:
         st.info(f"Folder '{folder_name}' already exists with ID: {existing_folder_id}")
@@ -537,3 +621,22 @@ def log_time(start_time, end_time, duration):
 
     except Exception as e:
         st.error(f"Failed to save data to Google Sheets: {e}")
+
+
+SERVICES_FILE = "services.json"
+
+def load_services():
+    if os.path.exists(SERVICES_FILE):
+        with open(SERVICES_FILE, "r") as file:
+            return json.load(file)
+    return []
+
+def save_services(services):
+    with open(SERVICES_FILE, "w") as file:
+        json.dump(services, file, indent=4)
+
+def reset_json():
+    if os.path.exists(SERVICES_FILE):
+        os.remove(SERVICES_FILE)
+    with open(SERVICES_FILE, "w") as file:
+        json.dump([], file)

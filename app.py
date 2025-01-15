@@ -46,6 +46,10 @@ def initialize_state():
         st.session_state["client"] = None
     if "completed" not in st.session_state:
         st.session_state["completed"] = True
+    if "start_time" not in st.session_state:
+        st.session_state["start_time"] = datetime.now(colombia_timezone)
+    if "end_time" not in st.session_state:
+        st.session_state["end_time"] = None
 
 def initialize_temp_details():
     if "temp_details" not in st.session_state:
@@ -69,6 +73,17 @@ if "uploaded_files" not in st.session_state:
 if "sales_rep" not in st.session_state:
     st.session_state["sales_rep"] = "-- Sales Representative --"
 
+if "final_comments" not in st.session_state["temp_details"]:
+    st.session_state["temp_details"]["final_comments"] = ""
+
+if 'initialized' not in st.session_state or not st.session_state['initialized']:
+    st.session_state['initialized'] = True 
+    reset_json()
+
+if "services" not in st.session_state:
+    st.session_state["services"] = load_services()
+
+
 request_id = st.session_state["request_id"]
 
 col1, col2, col3 = st.columns([1, 2, 1])
@@ -76,9 +91,9 @@ col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     st.image("logo_trading.png", width=800)
 
-if st.session_state["completed"]:
+start_time = st.session_state["start_time"]
 
-    start_time = datetime.now(colombia_timezone)
+if st.session_state["completed"]:
 
     st.write(f"**Quotation ID: {request_id}**")
 
@@ -177,19 +192,48 @@ if st.session_state["completed"]:
                     )
 
                     if incoterm:
-                        incoterm_details = questions_by_incoterm(incoterm, st.session_state["temp_details"], folder_id)
+                        incoterm_details = questions_by_incoterm(incoterm, st.session_state["temp_details"], folder_id, service)
                         st.session_state["temp_details"].update(incoterm_details)
+                
+                temp_details = st.session_state.get("temp_details", {})
+                final_comments = st.text_area("Final Comments", key="final_comments", value=temp_details.get("final_comments", ""))
+
+                st.session_state["temp_details"]["final_comments"] = final_comments
 
                 def handle_add_service():
-                    if not service.strip(): 
-                        st.warning("Please enter a valid service before proceeding.")
-                    elif not st.session_state["temp_details"]: 
+                    services = load_services()
+
+                    if not st.session_state.get("temp_details"):
                         st.warning("Please provide the service details before adding.")
+                        return
+                    
+                    if not service or service == "-- Services --":
+                        st.warning("Please enter a valid service before proceeding.")
+                        return
+
+                    if "edit_index" in st.session_state:
+                        edit_index = st.session_state["edit_index"]
+                        if edit_index < len(st.session_state["services"]):
+                            st.session_state["services"][edit_index]["details"] = st.session_state["temp_details"]
+                            st.session_state["services"][edit_index]["service"] = st.session_state["temp_details"]["service"]
+                            services[edit_index]["details"] = st.session_state["temp_details"]
+                            services[edit_index]["service"] = st.session_state["temp_details"]["service"]
+                            st.success("Service successfully updated.")
+                            del st.session_state["edit_index"]
+                        else:
+                            st.warning("Invalid edit index.")
                     else:
-                        st.session_state["services"].append({"service": service, "details": st.session_state["temp_details"]})
+                        new_service = {
+                            "service": st.session_state["temp_details"]["service"],
+                            "details": st.session_state["temp_details"]
+                        }
+                        st.session_state["services"].append(new_service)
+                        services.append(new_service)
                         st.success("Service successfully added.")
-                        st.session_state["temp_details"] = {}
-                        change_page("requested_services")
+
+                    save_services(services)
+                    st.session_state["temp_details"] = {}
+                    change_page("requested_services")
 
                 st.button("Add Service", key="add_service", on_click=handle_add_service)
 
@@ -205,19 +249,48 @@ if st.session_state["completed"]:
                         key="incoterm"
                     )
                     if incoterm:
-                        incoterm_details = questions_by_incoterm(incoterm, st.session_state["temp_details"], folder_id)
+                        incoterm_details = questions_by_incoterm(incoterm, st.session_state["temp_details"], folder_id, service)
                         st.session_state["temp_details"].update(incoterm_details)
+                
+                temp_details = st.session_state.get("temp_details", {})
+                final_comments = st.text_area("Final Comments", key="final_comments", value=temp_details.get("final_comments", ""))
+
+                st.session_state["temp_details"]["final_comments"] = final_comments
 
                 def handle_add_service():
-                    if not service.strip(): 
-                        st.warning("Please enter a valid service before proceeding.")
-                    elif not st.session_state["temp_details"]: 
+                    services = load_services()
+
+                    if not st.session_state.get("temp_details"):
                         st.warning("Please provide the service details before adding.")
+                        return
+                    
+                    if not service or service == "-- Services --":
+                        st.warning("Please enter a valid service before proceeding.")
+                        return
+
+                    if "edit_index" in st.session_state:
+                        edit_index = st.session_state["edit_index"]
+                        if edit_index < len(st.session_state["services"]):
+                            st.session_state["services"][edit_index]["details"] = st.session_state["temp_details"]
+                            st.session_state["services"][edit_index]["service"] = st.session_state["temp_details"]["service"]
+                            services[edit_index]["details"] = st.session_state["temp_details"]
+                            services[edit_index]["service"] = st.session_state["temp_details"]["service"]
+                            st.success("Service successfully updated.")
+                            del st.session_state["edit_index"]
+                        else:
+                            st.warning("Invalid edit index.")
                     else:
-                        st.session_state["services"].append({"service": service, "details": st.session_state["temp_details"]})
+                        new_service = {
+                            "service": st.session_state["temp_details"]["service"],
+                            "details": st.session_state["temp_details"]
+                        }
+                        st.session_state["services"].append(new_service)
+                        services.append(new_service)
                         st.success("Service successfully added.")
-                        st.session_state["temp_details"] = {}
-                        change_page("requested_services")
+
+                    save_services(services)
+                    st.session_state["temp_details"] = {}
+                    change_page("requested_services")
 
                 st.button("Add Service", key="add_service", on_click=handle_add_service)
 
@@ -237,19 +310,48 @@ if st.session_state["completed"]:
                 )
 
                 if incoterm:
-                    incoterm_details = questions_by_incoterm(incoterm, st.session_state["temp_details"], folder_id)
+                    incoterm_details = questions_by_incoterm(incoterm, st.session_state["temp_details"], folder_id, service)
                     st.session_state["temp_details"].update(incoterm_details)
+            
+            temp_details = st.session_state.get("temp_details", {})
+            final_comments = st.text_area("Final Comments", key="final_comments", value=temp_details.get("final_comments", ""))
+
+            st.session_state["temp_details"]["final_comments"] = final_comments
 
             def handle_add_service():
-                    if not service.strip(): 
-                        st.warning("Please enter a valid service before proceeding.")
-                    elif not st.session_state["temp_details"]: 
-                        st.warning("Please provide the service details before adding.")
+                services = load_services()
+
+                if not st.session_state.get("temp_details"):
+                    st.warning("Please provide the service details before adding.")
+                    return
+                
+                if not service or service == "-- Services --":
+                    st.warning("Please enter a valid service before proceeding.")
+                    return
+
+                if "edit_index" in st.session_state:
+                    edit_index = st.session_state["edit_index"]
+                    if edit_index < len(st.session_state["services"]):
+                        st.session_state["services"][edit_index]["details"] = st.session_state["temp_details"]
+                        st.session_state["services"][edit_index]["service"] = st.session_state["temp_details"]["service"]
+                        services[edit_index]["details"] = st.session_state["temp_details"]
+                        services[edit_index]["service"] = st.session_state["temp_details"]["service"]
+                        st.success("Service successfully updated.")
+                        del st.session_state["edit_index"]
                     else:
-                        st.session_state["services"].append({"service": service, "details": st.session_state["temp_details"]})
-                        st.success("Service successfully added.")
-                        st.session_state["temp_details"] = {}
-                        change_page("requested_services")
+                        st.warning("Invalid edit index.")
+                else:
+                    new_service = {
+                        "service": st.session_state["temp_details"]["service"],
+                        "details": st.session_state["temp_details"]
+                    }
+                    st.session_state["services"].append(new_service)
+                    services.append(new_service)
+                    st.success("Service successfully added.")
+                    
+                save_services(services)
+                st.session_state["temp_details"] = {}
+                change_page("requested_services")
 
             st.button("Add Service", key="add_service", on_click=handle_add_service)
 
@@ -259,17 +361,36 @@ if st.session_state["completed"]:
             with st.expander("**Customs Details**"):
                 customs_details = customs_questions(folder_id, service)
                 st.session_state["temp_details"].update(customs_details)
+            
+            temp_details = st.session_state.get("temp_details", {})
+            final_comments = st.text_area("Final Comments", key="final_comments", value=temp_details.get("final_comments", ""))
+
+            st.session_state["temp_details"]["final_comments"] = final_comments
 
             def handle_add_service():
-                    if not service.strip(): 
-                        st.warning("Please enter a valid service before proceeding.")
-                    elif not st.session_state["temp_details"]: 
-                        st.warning("Please provide the service details before adding.")
+                services = load_services()
+                    
+                if not service.strip(): 
+                    st.warning("Please enter a valid service before proceeding.")
+                elif not st.session_state["temp_details"]: 
+                    st.warning("Please provide the service details before adding.")
+                else:
+                    if "edit_index" in st.session_state:
+                        edit_index = st.session_state["edit_index"]
+                        st.session_state["services"][edit_index]["details"] = st.session_state["temp_details"]
+                        st.session_state["services"][edit_index]["service"] = st.session_state["temp_details"]["service"]
+                        services[edit_index]["details"] = st.session_state["temp_details"]
+                        services[edit_index]["service"] = st.session_state["temp_details"]["service"]
+                        st.success("Service successfully updated.")
+                        del st.session_state["edit_index"]
                     else:
                         st.session_state["services"].append({"service": service, "details": st.session_state["temp_details"]})
+                        services.append({"service": service, "details": st.session_state["temp_details"]})
                         st.success("Service successfully added.")
-                        st.session_state["temp_details"] = {}
-                        change_page("requested_services")
+
+                    save_services(services)
+                    st.session_state["temp_details"] = {}
+                    change_page("requested_services")
 
             st.button("Add Service", key="add_service", on_click=handle_add_service)
 
@@ -277,16 +398,26 @@ if st.session_state["completed"]:
 
         if st.session_state["services"]:
             st.subheader("Requested Services")
+            services = st.session_state["services"]
 
-            col1, col2 = st.columns(2)
+            def handle_edit(service_index):
+                st.session_state["edit_index"] = service_index
+                service = services[service_index]
+                st.session_state["temp_details"] = service["details"].copy()
+                st.session_state["temp_details"]["service"] = service["service"]
+                change_page("client_data")
 
-            with col1:
-                for idx, service in enumerate(st.session_state["services"]):
-                    st.write(f"{idx + 1}. {service['service']}")
-            
-            with col2:
-                for idx, service in enumerate(st.session_state["services"]):
-                    st.button(f"Edit Service", key=f"edit_button_{idx}")
+            def button(service):
+                if service:
+                    handle_edit(i)
+
+            for i, service in enumerate(services):
+                st.write(f"{i + 1}. {service['service']}")
+                st.button(
+                    f"Edit {service['service']}",
+                    key=f"edit_{i}",
+                    on_click=lambda index=i: handle_edit(index)  # Pass index to the handler
+                )
 
             col1, col2 = st.columns(2)
 
@@ -296,7 +427,7 @@ if st.session_state["completed"]:
                 
                 st.button("Add Service", on_click=handle_add_service)
 
-            with col2: 
+            with col2:
 
                 if "df_freight" not in st.session_state:
                     st.session_state["df_freight"] = pd.DataFrame()
@@ -308,9 +439,12 @@ if st.session_state["completed"]:
                     st.session_state["df_customs"] = pd.DataFrame()
 
                 if st.button("Finalize Quotation"):
-                    if st.session_state["services"]:
+                    services = load_services()
 
-                        end_time = datetime.now(colombia_timezone)
+                    if services:
+                        st.session_state["end_time"] = datetime.now(colombia_timezone)
+                        end_time = st.session_state["end_time"]
+
                         duration = (end_time - start_time).total_seconds()
                         end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S')
                         log_time(start_time, end_time, duration)
@@ -323,12 +457,12 @@ if st.session_state["completed"]:
                         ground_transport_records = []
                         customs_records = []
 
-                        for service in st.session_state["services"]:
+                        for service in services:
                             base_info = {
                                 "time": end_time_str,
                                 "request_id": f'=HYPERLINK("{folder_link}"; "{request_id}")',
                                 "commercial": commercial,
-                                "client": st.session_state["client"],
+                                "client": client,
                                 "service": service["service"],
                             }
 
@@ -343,7 +477,7 @@ if st.session_state["completed"]:
                         if freight_records:
                             new_freight_df = pd.DataFrame(freight_records)
                             st.session_state["df_freight"] = pd.concat(
-                                [st.session_state["df_freight"], new_freight_df],
+                                [st.session_state.get("df_freight", pd.DataFrame()), new_freight_df],
                                 ignore_index=True
                             )
                             save_to_google_sheets(st.session_state["df_freight"], "Freight", sheet_id)
@@ -351,7 +485,7 @@ if st.session_state["completed"]:
                         if ground_transport_records:
                             new_ground_transport_df = pd.DataFrame(ground_transport_records)
                             st.session_state["df_ground_transport"] = pd.concat(
-                                [st.session_state["df_ground_transport"], new_ground_transport_df],
+                                [st.session_state.get("df_ground_transport", pd.DataFrame()), new_ground_transport_df],
                                 ignore_index=True
                             )
                             save_to_google_sheets(st.session_state["df_ground_transport"], "Ground Transport", sheet_id)
@@ -359,15 +493,15 @@ if st.session_state["completed"]:
                         if customs_records:
                             new_customs_df = pd.DataFrame(customs_records)
                             st.session_state["df_customs"] = pd.concat(
-                                [st.session_state["df_customs"], new_customs_df],
+                                [st.session_state.get("df_customs", pd.DataFrame()), new_customs_df],
                                 ignore_index=True
                             )
                             save_to_google_sheets(st.session_state["df_customs"], "Customs", sheet_id)
-                        
 
                         del st.session_state["request_id"]
                         st.session_state["services"] = []
-
+                        st.session_state["start_time"] = None
+                        st.session_state["end_time"] = None
                         st.success("Quotation completed!")
 
                     else:
