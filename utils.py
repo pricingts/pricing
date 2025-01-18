@@ -251,6 +251,7 @@ def common_questions(folder_id):
 def handle_refrigerated_cargo(cont_type, incoterm):
     temp_details = st.session_state.get("temp_details", {})
     reefer_cont_type, drayage_reefer = None, None
+    pickup_thermo_king = None
     if cont_type == "Reefer 40'":
         reefer_types = ["Controlled Atmosphere", "Cold Treatment"]
         default_index = reefer_types.index(temp_details.get("reefer_type", "Controlled Atmosphere"))
