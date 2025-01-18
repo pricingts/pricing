@@ -200,10 +200,6 @@ if st.session_state["completed"]:
                     "Consignee": ["EXW", "FOB", "CIF", "DAP", "FCA", "CFR", "CIP", "FAS", "CPT"]
                 }
 
-                # Mostrar el valor de `role` para depuración
-                st.write(f"Role: {role}")  # Esto ayuda a verificar el valor de `role`
-
-                # Obtener las opciones de incoterms basadas en el rol
                 incoterm_options = incoterms_by_role.get(role, [])
                 if not incoterm_options:
                     st.warning("No incoterm options available for the selected role.")
@@ -338,7 +334,7 @@ if st.session_state["completed"]:
                             for service in services:
                                 base_info = {
                                     "time": end_time_str,
-                                    "request_id": f'+HYPERLINK("{folder_link}"; "{request_id}")',
+                                    "request_id": f'=HYPERLINK("{folder_link}"; "{request_id}")',
                                     "commercial": commercial,
                                     "client": client,
                                     "service": service["service"],
