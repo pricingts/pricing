@@ -10,26 +10,28 @@ from datetime import datetime
 import json
 import os
 
+SERVICES_FILE = "services.json"
+TEMP_DIR = "temp_uploads"
+
 freight_columns = [
     "request_id", "time", "commercial", "service", "client", "client_role", "incoterm", "transport_type", "modality", "routes_info", "pickup_address", "zip_code_origin", "delivery_address", "zip_code_destination", 
-    "commodity", "hs_code", "cargo_value", "freight_cost", "insurance_cost", "origin_certificates", "commercial_invoice_links", "packing_list_links", "technical_sheets_links", "weight", "destination_cost", 
+    "commodity", "hs_code", "cargo_value", "freight_cost", "insurance_cost", "weight", "destination_cost", 
     "type_container", "reinforced", "suitable_food", "imo_cargo", "un_code", "msds", "positioning", "pickup_city", "lcl_fcl_mode", "drayage_reefer", "reefer_cont_type", "pickup_thermo_king",
     "number_pallets_input", "info_pallets_str", "pallets_links", "lcl_description", "not_stackable",
-    "final_comments", "additional_documents_links"
+    "final_comments"
 ]
 
 transport_columns = [
     "request_id", "time", "commercial", "service", "client", "pickup_address", "zip_code_origin", "delivery_address", "zip_code_destination", "commodity", "hs_code",
     "ground_service", "temperature",
     "number_pallets_input", "info_pallets_str", "pallets_links", "lcl_description", "not_stackable",
-    "final_comments", "additional_documents_links"
+    "final_comments"
 ]
 
 customs_columns = [
     "request_id", "time", "commercial", "service", "client", "incoterm", "country_origin", "country_destination", "commodity", "hs_code", "freight_cost", 
-    "number_pallets", "info_pallets_str", "info_pallets_link",
-    "insurance_cost", "origin_certificate_links", "commercial_invoice_links", "packing_list_links",
-    "final_comments", "additional_documents_links"
+    "number_pallets", "info_pallets_str", "insurance_cost",
+    "final_comments"
 ]
 
 
@@ -65,47 +67,33 @@ def folder(request_id):
             st.error("Failed to create folder for this request.")
         else:
             folder_link = f"https://drive.google.com/drive/folders/{folder_id}"
-            st.success(f"Folder created for this request")
 
     return folder_id, folder_link
 
-def cargo(folder_id, service):
+def cargo(service):
     weight = None
 
     commercial_invoices = st.file_uploader("Attach Commercial Invoices", accept_multiple_files=True, key="commercial_invoices")
     packing_lists = st.file_uploader("Attach Packing Lists", accept_multiple_files=True, key="packing_lists")
 
-    ci_links = []
+    ci_files = []
     if commercial_invoices:
-        for commercial_invoice in commercial_invoices:
-            if commercial_invoice.name not in st.session_state["uploaded_files"]:
-                _, commercial_invoice_link = upload_file_to_folder(commercial_invoice, folder_id)
-                if commercial_invoice_link:
-                    st.session_state["uploaded_files"][commercial_invoice.name] = commercial_invoice_link
-                    ci_links.append(commercial_invoice_link)
-                    st.success(f"Commercial Invoice '{commercial_invoice.name}' uploaded successfully: [View File]({commercial_invoice_link})")
+        ci_files = [save_file_locally(file) for file in commercial_invoices]
 
-    pl_links = []
+    pl_files = []
     if packing_lists:
-        for packing_list in packing_lists:
-            if packing_list.name not in st.session_state["uploaded_files"]:
-                _, packing_list_link = upload_file_to_folder(packing_list, folder_id)
-                if packing_list_link:
-                    st.session_state["uploaded_files"][packing_list.name] = packing_list_link
-                    pl_links.append(packing_list_link)
-                    st.success(f"Packing List '{packing_list.name}' uploaded successfully: [View File]({packing_list_link})")
+        pl_files = [save_file_locally(file) for file in packing_lists]
 
     if service != "Customs Brokerage":
         weight = st.number_input("Weight", key="weight")
 
     return {
-        "commercial_invoice_links": ci_links,
-        "packing_list_links": pl_links,
+        "commercial_invoice_files": ci_files,
+        "packing_list_files": pl_files,
         "weight": weight
     }
 
-
-def dimensions(folder_id):
+def dimensions():
     temp_details = st.session_state.get("temp_details", {})
 
     if "number_pallets" not in st.session_state:
@@ -182,28 +170,22 @@ def dimensions(folder_id):
         }
 
     else:
-        info_pallets_files = st.file_uploader("Attach Pallets Information", accept_multiple_files=True,  # Permite cargar múltiples archivos
+        info_pallets_files = st.file_uploader("Attach Pallets Information", accept_multiple_files=True, 
         key="info_pallets_files")
 
-        pallets_links = []
+        pallets_files = []
         if info_pallets_files:
-            for info_pallet in info_pallets_files:
-                if info_pallet.name not in st.session_state["uploaded_files"]:
-                    _, info_pallet_link = upload_file_to_folder(info_pallet, folder_id)
-                    if info_pallet_link:
-                        st.session_state["uploaded_files"][info_pallet.name] = info_pallet_link
-                        pallets_links.append(info_pallet_link)
-                        st.success(f"Pallet information '{info_pallet.name}' uploaded successfully: [View File]({info_pallet_link})")
+            pallets_files = [save_file_locally(file) for file in info_pallets_files]
 
         return {
             "number_pallets": st.session_state.number_pallets,
-            "pallets_links": pallets_links
+            "pallets_files": pallets_files
         }
 
 def add_route():
     st.session_state["routes"].append({"origin": "", "destination": ""})
 
-def common_questions(folder_id):
+def common_questions():
     temp_details = st.session_state.get("temp_details", {})
     type_container = st.selectbox(
         "Type of container",
@@ -223,7 +205,7 @@ def common_questions(folder_id):
     reinforced = st.checkbox("Reinforced", key="reinforced", value=temp_details.get("reinforced", False))
     suitable_food = st.checkbox("Suitable for foodstuffs", key="suitable_food", value=temp_details.get("suitable_food", False))
 
-    p_imo = imo_questions(folder_id)
+    p_imo = imo_questions()
 
     positioning = st.radio(
         "Container Positioning",
@@ -276,54 +258,38 @@ def handle_refrigerated_cargo(cont_type, incoterm):
         "pickup_thermo_king": pickup_thermo_king,
     }
 
-def insurance_questions(folder_id):
+def insurance_questions():
     technical_sheets = st.file_uploader("Attach technical sheets", accept_multiple_files=True, key="technical_sheets")
 
-    ts_links = []
+    ts_files = []
     if technical_sheets:
-        for technical_sheet in technical_sheets:
-            if technical_sheet.name not in st.session_state["uploaded_files"]:
-                _, technical_sheet_link = upload_file_to_folder(technical_sheet, folder_id)
-                if technical_sheet_link:
-                    st.success(f"Technical Sheet '{technical_sheet.name}' uploaded successfully: [View File]({technical_sheet_link})")
-                    st.session_state["uploaded_files"][technical_sheet.name] = technical_sheet_link
-                    ts_links.append(technical_sheet_link)
+        ts_files = [save_file_locally(file) for file in technical_sheets]
 
     return {
-        "technical_sheets_links": ts_links
+        "technical_sheets_files": ts_files
     }
 
-def imo_questions(folder_id):
+def imo_questions():
     temp_details = st.session_state.get("temp_details", {})
     imo_cargo = st.checkbox(
         "IMO", 
         key="imo_cargo", 
         value=temp_details.get("imo_cargo", False)
     )
-    un_code, msds, msds_link = None, None, None
+    un_code, msds_files = None, None
 
     if imo_cargo:
-        un_code = st.text_input(
-            "UN Code", 
-            key="un_code", 
-            value=temp_details.get("un_code", "")
-        )
-        msds = st.file_uploader(
-            "Attach MSDS", 
-            key="msds"
-        )
+        un_code = st.text_input("UN Code", key="un_code", value=temp_details.get("un_code", ""))
+        msds = st.file_uploader("Attach MSDS", accept_multiple_files=True, key="msds")
 
+        msds_files = []
         if msds:
-            if msds.name not in st.session_state["uploaded_files"]:
-                _, msds_link = upload_file_to_folder(msds, folder_id)
-                if msds_link:
-                    st.success(f"MSDS uploaded successfully: [View File]({msds_link})")
-                    st.session_state["uploaded_files"][msds.name] = msds_link
+            msds_files = [save_file_locally(file) for file in msds]
 
     return {
         "imo_cargo": imo_cargo,
         "un_code": un_code,
-        "msds": msds_link
+        "msds_files": msds_files
     }
 
 def initialize_routes():
@@ -349,7 +315,7 @@ def handle_routes():
     if st.button("Add other route"):
         add_route()
 
-def questions_by_incoterm(incoterm, details, folder_id, service, role):
+def questions_by_incoterm(incoterm, details, service, role):
     if details is None:
         details = {}
 
@@ -377,7 +343,7 @@ def questions_by_incoterm(incoterm, details, folder_id, service, role):
             commodity = st.text_input("Commodity", key="commodity", value=details.get("commodity", ""))
             hs_code = st.text_input("HS Code", key="hs_code", value=details.get("hs_code", ""))
             cargo_value = st.number_input("Cargo Value (USD)", key="cargo_value", value=details.get("cargo_value", 0))
-            customs_info = customs_questions(folder_id, service, customs=True)
+            customs_info = customs_questions(service, customs=True)
 
             destination_cost = None
             if incoterm == "FOB":
@@ -406,10 +372,10 @@ def questions_by_incoterm(incoterm, details, folder_id, service, role):
             zip_code_origin = st.text_input("Zip Code City of Origin", key="zip_code_origin", value=details.get("zip_code_origin", ""))
             commodity = st.text_input("Commodity", key="commodity", value=details.get("commodity", ""))
             hs_code = st.text_input("HS Code", key="hs_code", value=details.get("hs_code", ""))
-            customs_info = customs_questions(folder_id, service, customs=True)
+            customs_info = customs_questions(service, customs=True)
 
             if incoterm == "CIF":
-                insurance = insurance_questions(folder_id)
+                insurance = insurance_questions()
                 details.update(insurance)
 
             destination_cost = None
@@ -443,7 +409,7 @@ def questions_by_incoterm(incoterm, details, folder_id, service, role):
 
             customs_info = None
             if incoterm == "DDP": 
-                customs_info = customs_questions(folder_id, service, customs=True)
+                customs_info = customs_questions(service, customs=True)
 
                 details.update({
                 "incoterm": incoterm,
@@ -471,7 +437,7 @@ def questions_by_incoterm(incoterm, details, folder_id, service, role):
 
     return details, routes
 
-def ground_transport(folder_id):
+def ground_transport():
     temp_details = st.session_state.get("temp_details", {})
     pickup_address = st.text_input(
             "Pickup Address",
@@ -526,7 +492,7 @@ def ground_transport(folder_id):
             "temperature": temperature
         }
     if ground_service == "LTL":
-        dimensions_info = dimensions(folder_id) or {}
+        dimensions_info = dimensions() or {}
         return {
             "pickup_address": pickup_address,
             "zip_code_origin": zip_code_origin,
@@ -549,11 +515,11 @@ def ground_transport(folder_id):
         "ground_service": ground_service
     }
 
-def lcl_questions(folder_id):
+def lcl_questions():
     temp_details = st.session_state.get("temp_details", {})
     dimensions_info = None
 
-    dimensions_info = dimensions(folder_id)
+    dimensions_info = dimensions()
 
     lcl_description = st.text_area(
         "Weight information for each piece, number of pieces, and dimensions per piece.",
@@ -565,7 +531,7 @@ def lcl_questions(folder_id):
         key="not_stackable",
         value=temp_details.get("not_stackable", False)
     )
-    imo_info = imo_questions(folder_id)
+    imo_info = imo_questions()
 
     return {
         **dimensions_info,
@@ -575,7 +541,7 @@ def lcl_questions(folder_id):
     }
 
 
-def customs_questions(folder_id, service, customs=False):
+def customs_questions(service, customs=False):
     temp_details = st.session_state.get("temp_details", {})
     customs_data = {}
     if not customs:
@@ -593,7 +559,7 @@ def customs_questions(folder_id, service, customs=False):
         commodity = st.text_input("Commodity", key="commodity", value=temp_details.get("commodity", ""))
         hs_code = st.text_input("HS Code", key="hs_code", value=temp_details.get("hs_code", ""))
 
-        dimensions_info = dimensions(folder_id)
+        dimensions_info = dimensions()
         customs_data.update({
             "country_origin": country_origin,
             "country_destination": country_destination,
@@ -604,49 +570,37 @@ def customs_questions(folder_id, service, customs=False):
 
     freight_cost = st.number_input("Freight Cost (USD)", key="freight_cost", value=temp_details.get("freight_cost", 0))
     insurance_cost = st.number_input("Insurance Cost (USD)", key="insurance_cost", value=temp_details.get("insurance_cost", 0))
-    cargo_info = cargo(folder_id, service)
+    cargo_info = cargo(service)
     origin_certificates = st.file_uploader("Certificate of Origin", accept_multiple_files=True, key="origin_certificates")
 
-    origin_certificate_links = []
+    origin_certificate_files = []
     if origin_certificates:
-        for origin_certificate in origin_certificates:
-            if hasattr(origin_certificate, "name") and origin_certificate.name not in st.session_state.get("uploaded_files", {}):
-                _, origin_certificate_link = upload_file_to_folder(origin_certificate, folder_id)
-                if origin_certificate_link:
-                    st.session_state.setdefault("uploaded_files", {})[origin_certificate.name] = origin_certificate_link
-                    origin_certificate_links.append(origin_certificate_link)
-                    st.success(f"Origin Certificate '{origin_certificate.name}' uploaded successfully: [View File]({origin_certificate_link})")
-
+        origin_certificate_files = [save_file_locally(file) for file in origin_certificates]
+    
     customs_data.update({
         **cargo_info,
         "freight_cost": freight_cost,
         "insurance_cost": insurance_cost,
-        "origin_certificate_links": origin_certificate_links,
+        "origin_certificate_files": origin_certificate_files,
     })
 
     return customs_data
 
-def final_questions(folder_id):
+def final_questions():
     temp_details = st.session_state.get("temp_details", {})
 
     final_comments = st.text_area("Final Comments", key="final_comments", value=temp_details.get("final_comments", ""))
     st.session_state["temp_details"]["final_comments"] = final_comments
 
-    additional_documents = st.file_uploader("Attach Additional Documents", accept_multiple_files=True, key="additional_documents")
+    additional_documents = st.file_uploader("Attach Additional Documents", accept_multiple_files=True, key="additional_documents_files")
 
-    uploaded_links = []
+    additional_documents_files = []
     if additional_documents:
-        for document in additional_documents:
-            if document.name not in st.session_state["uploaded_files"]:
-                _, document_link = upload_file_to_folder(document, folder_id)
-                if document_link:
-                    st.session_state["uploaded_files"][document.name] = document_link
-                    uploaded_links.append(document_link)
-                    st.success(f"Document '{document.name}' uploaded successfully: [View File]({document_link})")
+        additional_documents_files = [save_file_locally(file) for file in additional_documents]
 
     return {
         "final_comments": final_comments,
-        "additional_documents_links": uploaded_links
+        "additional_documents_files": additional_documents_files
     }
 
 def handle_add_service():
@@ -729,29 +683,6 @@ def save_to_google_sheets(dataframe, sheet_name, sheet_id):
     except Exception as e:
         st.error(f"Failed to save data to Google Sheets: {e}")
 
-
-def create_folder(folder_name, parent_folder_id):
-    try:
-        file_metadata = {
-            'name': folder_name,
-            'mimeType': 'application/vnd.google-apps.folder',
-            'parents': [parent_folder_id]
-        }
-        folder = drive_service.files().create(
-            body=file_metadata,
-            fields='id',
-            supportsAllDrives=True 
-        ).execute()
-        folder_id = folder.get('id')
-        folder_link = f"https://drive.google.com/drive/folders/{folder_id}"
-
-        return folder_id, folder_link
-    
-    except Exception as e:
-        st.error(f"Failed to create folder: {e}")
-        return None
-    
-
 def validate_shared_drive_folder(parent_folder_id):
     try:
         folder = drive_service.files().get(
@@ -763,37 +694,6 @@ def validate_shared_drive_folder(parent_folder_id):
     except Exception as e:
         st.error(f"Parent folder not found or inaccessible: {e}")
         return False
-
-def upload_file_to_folder(file, folder_id):
-    try:
-        temp_dir = "temp"
-        if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
-
-        temp_file_path = os.path.join(temp_dir, file.name)
-        
-        with open(temp_file_path, "wb") as temp_file:
-            temp_file.write(file.read())
-        
-        file_metadata = {
-            'name': file.name,
-            'parents': [folder_id]
-        }
-        media = MediaFileUpload(temp_file_path, resumable=True)
-
-        uploaded_file = drive_service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id, webViewLink',
-            supportsAllDrives=True  
-        ).execute()
-
-        os.remove(temp_file_path)
-        
-        return uploaded_file.get('id'), uploaded_file.get('webViewLink')
-    except Exception as e:
-        st.error(f"Failed to upload file: {e}")
-        return None, None
 
 def get_folder_id(folder_name, parent_folder_id):
     try:
@@ -858,9 +758,6 @@ def log_time(start_time, end_time, duration, request_id):
     except Exception as e:
         st.error(f"Failed to save data to Google Sheets: {e}")
 
-
-SERVICES_FILE = "services.json"
-
 def load_services():
     if os.path.exists(SERVICES_FILE):
         with open(SERVICES_FILE, "r") as file:
@@ -876,3 +773,38 @@ def reset_json():
         os.remove(SERVICES_FILE)
     with open(SERVICES_FILE, "w") as file:
         json.dump([], file)
+
+if not os.path.exists(TEMP_DIR):
+    os.makedirs(TEMP_DIR)
+
+def save_file_locally(file, temp_dir=TEMP_DIR):
+    try:
+        temp_file_path = os.path.join(temp_dir, file.name)
+        with open(temp_file_path, "wb") as temp_file:
+            temp_file.write(file.read())
+        return temp_file_path
+    except Exception as e:
+        st.error(f"Failed to save file locally: {e}")
+        return None
+
+def upload_all_files_to_google_drive(folder_id):
+    try:
+        for root, _, files in os.walk(TEMP_DIR):
+            for file_name in files:
+                file_path = os.path.join(root, file_name)
+                with open(file_path, "rb") as file:
+                    file_metadata = {
+                        'name': file_name,
+                        'parents': [folder_id]
+                    }
+                    media = MediaFileUpload(file_path, resumable=True)
+
+                    uploaded_file = drive_service.files().create(
+                        body=file_metadata,
+                        media_body=media,
+                        fields='id, webViewLink',
+                        supportsAllDrives=True
+                    ).execute()
+
+    except Exception as e:
+        st.error(f"Failed to upload files to Google Drive: {e}")
