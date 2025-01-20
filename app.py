@@ -9,7 +9,6 @@ from datetime import datetime
 import random
 import string
 
-
 sheet_id = st.secrets["general"]["sheet_id"]
 DRIVE_ID = st.secrets["general"]["drive_id"]
 PARENT_FOLDER_ID = st.secrets["general"]["parent_folder"]
@@ -36,79 +35,73 @@ client_gcp = gspread.authorize(sheets_creds)
 colombia_timezone = pytz.timezone('America/Bogota')
 
 #--------------------------------------UTILITY FUNCTIONS--------------------------------
+def clear_temp_directory():
+    for root, _, files in os.walk(TEMP_DIR):
+        for file_name in files:
+            os.remove(os.path.join(root, file_name))
 
 def initialize_state():
-    if "page" not in st.session_state:
-        st.session_state["page"] = "select_sales_rep"
-    if "sales_rep" not in st.session_state:
-        st.session_state["sales_rep"] = None
-    if "services" not in st.session_state:
-        st.session_state["services"] = []
-    if "client" not in st.session_state: 
-        st.session_state["client"] = None
-    if "client_role" not in st.session_state: 
-        st.session_state["client_role"] = None
-    if "completed" not in st.session_state:
-        st.session_state["completed"] = True
-    if "start_time" not in st.session_state:
-        st.session_state["start_time"] = datetime.now(colombia_timezone)
-    if "end_time" not in st.session_state:
-        st.session_state["end_time"] = None
-    
+    default_values = {
+        "page": "select_sales_rep",
+        "sales_rep": None,
+        "services": [],
+        "client": None,
+        "client_role": None,
+        "completed": True,
+        "start_time": datetime.now(colombia_timezone),
+        "end_time": None,
+        "uploaded_files": {},
+        "temp_details": {},
+        "generated_ids": set(),
+        "request_id": None,
+        "final_comments": "",
+        "initialized": True,
+    }
+    for key, value in default_values.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
 
-def initialize_temp_details():
-    if "temp_details" not in st.session_state:
-        st.session_state["temp_details"] = {} 
+    if not st.session_state.get("request_id"):
+        st.session_state["request_id"] = generate_request_id()
+
+    reset_json()
+    clear_temp_directory()
+
+def generate_request_id():
+    if "generated_ids" not in st.session_state:
+        st.session_state["generated_ids"] = set()
+
+    while True:
+        unique_id = "Q" + "".join(random.choices(string.digits, k=4))
+        if unique_id not in st.session_state["generated_ids"]:
+            st.session_state["generated_ids"].add(unique_id)
+            return unique_id
 
 def change_page(new_page):
     st.session_state["page"] = new_page
 
 #------------------------------------APP----------------------------------------
-
-initialize_state()
-initialize_temp_details()
-
-def generate_request_id():
-    if "request_id" not in st.session_state:
-        if "generated_ids" not in st.session_state:
-            st.session_state["generated_ids"] = set() 
-
-        while True:
-            unique_id = "Q" + "".join(random.choices(string.digits, k=4))
-            if unique_id not in st.session_state["generated_ids"]:
-                st.session_state["generated_ids"].add(unique_id)
-                st.session_state["request_id"] = unique_id
-                break
-
-    return st.session_state["request_id"]
-
-
-if "uploaded_files" not in st.session_state:
-    st.session_state["uploaded_files"] = {}
-
-if "sales_rep" not in st.session_state:
-    st.session_state["sales_rep"] = "-- Sales Representative --"
-
-if "final_comments" not in st.session_state["temp_details"]:
-    st.session_state["temp_details"]["final_comments"] = ""
-
-if 'initialized' not in st.session_state or not st.session_state['initialized']:
-    st.session_state['initialized'] = True 
-    reset_json()
-
-if "services" not in st.session_state:
-    st.session_state["services"] = load_services()
-
 col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
     st.image("logo_trading.png", width=800)
 
-start_time = st.session_state["start_time"]
+if "initialized" not in st.session_state or not st.session_state["initialized"]:
+    initialize_state()
 
 if st.session_state["completed"]:
+    if "request_id" not in st.session_state or not st.session_state["request_id"]:
+        st.session_state["request_id"] = generate_request_id()
+        st.session_state["start_time"] = datetime.now(colombia_timezone)
+    elif st.session_state.get("start_time") is None:
+        st.session_state["start_time"] = datetime.now(colombia_timezone)
+    
+    if st.session_state.get("start_time") is None:
+        st.session_state["start_time"] = datetime.now(colombia_timezone)
 
-    request_id = generate_request_id()
+    request_id = st.session_state['request_id']
+    start_time = st.session_state["start_time"]
+
     st.write(f"**Quotation ID: {request_id}**")
 
     if st.session_state["page"] == "select_sales_rep":
@@ -172,14 +165,6 @@ if st.session_state["completed"]:
         service = st.session_state["temp_details"].get("service", None)
         role = st.session_state.get("temp_details", {}).get("client_role", None)
 
-        if "folder_id" not in st.session_state or st.session_state["folder_request_id"] != request_id:
-            folder_id, folder_link = folder(request_id)
-            st.session_state["folder_id"] = folder_id
-            st.session_state["folder_link"] = folder_link
-            st.session_state["folder_request_id"] = request_id
-        
-        folder_id = st.session_state.get("folder_id", "No folder created")
-
     #------------------------------------INTERNATIONAL FREIGHT----------------------------
         if service == "International Freight":
             st.subheader("International Freight")
@@ -204,14 +189,10 @@ if st.session_state["completed"]:
                 if not incoterm_options:
                     st.warning("No incoterm options available for the selected role.")
 
-                incoterm = st.selectbox(
-                    "Select Incoterm",
-                    incoterm_options,
-                    key="incoterm"
-                )
+                incoterm = st.selectbox("Select Incoterm", incoterm_options, key="incoterm")
 
                 if incoterm:
-                    incoterm_result = questions_by_incoterm(incoterm, st.session_state["temp_details"], folder_id, service, role)
+                    incoterm_result = questions_by_incoterm(incoterm, st.session_state["temp_details"], service, role)
 
                     if isinstance(incoterm_result, tuple):
                         incoterm_details, routes = incoterm_result
@@ -226,7 +207,7 @@ if st.session_state["completed"]:
 
             with st.expander("**Transportation Details**"):
                 if modality == "FCL":
-                    common_details = common_questions(folder_id)
+                    common_details = common_questions()
                     st.session_state["temp_details"].update(common_details)
 
                     if common_details.get("type_container") in ["Reefer 20'", "Reefer 40'"]:
@@ -234,11 +215,11 @@ if st.session_state["completed"]:
                         refrigerated_cargo = handle_refrigerated_cargo(common_details["type_container"], incoterm)
                         st.session_state["temp_details"].update(refrigerated_cargo)
                 elif modality == "LCL":
-                    lcl_details = lcl_questions(folder_id)
+                    lcl_details = lcl_questions()
                     st.session_state["temp_details"].update(lcl_details)
 
             with st.expander("**Final Details**"):
-                final_details = final_questions(folder_id)
+                final_details = final_questions()
                 st.session_state["temp_details"].update(final_details)
             
             st.button("Add Service", key="add_service", on_click=handle_add_service)
@@ -248,12 +229,12 @@ if st.session_state["completed"]:
             st.subheader("Ground Transportation")
 
             with st.expander("**Cargo Details**"):
-                lcl_details = ground_transport(folder_id)
+                lcl_details = ground_transport()
                 st.session_state["temp_details"].update(lcl_details)
             
             temp_details = st.session_state.get("temp_details", {})
             with st.expander("**Final Details**"):
-                final_details = final_questions(folder_id)
+                final_details = final_questions()
                 st.session_state["temp_details"].update(final_details)
             
             st.button("Add Service", key="add_service", on_click=handle_add_service)
@@ -262,12 +243,12 @@ if st.session_state["completed"]:
             st.subheader("Customs Brokerage")
 
             with st.expander("**Customs Details**"):
-                customs_details = customs_questions(folder_id, service)
+                customs_details = customs_questions(service)
                 st.session_state["temp_details"].update(customs_details)
             
             temp_details = st.session_state.get("temp_details", {})
             with st.expander("**Final Details**"):
-                final_details = final_questions(folder_id)
+                final_details = final_questions()
                 st.session_state["temp_details"].update(final_details)
             
             st.button("Add Service", key="add_service", on_click=handle_add_service)
@@ -285,19 +266,40 @@ if st.session_state["completed"]:
                 st.session_state["temp_details"]["service"] = service["service"]
                 change_page("client_data")
 
+            def handle_delete(service_index):
+                removed_service = st.session_state["services"].pop(service_index)
+                services_json = load_services()
+
+                updated_services = [
+                    s for s in services_json
+                    if s["details"] != removed_service["details"] or s["service"] != removed_service["service"]
+                ]
+                save_services(updated_services)
+                st.success(f"Service {service_index + 1} has been removed!")
+
             def button(service):
                 if service:
                     handle_edit(i)
 
             for i, service in enumerate(services):
-                st.write(f"{i + 1}. {service['service']}")
-                st.button(
-                    f"Edit {service['service']}",
-                    key=f"edit_{i}",
-                    on_click=lambda index=i: handle_edit(index)  
-                )
+                col1, col2, col3 = st.columns([0.8, 0.1, 0.1]) 
 
-            col1, col2 = st.columns(2)
+                with col1:
+                    st.write(f"{i + 1}. {service['service']}")
+                with col2:
+                    st.button(
+                        f"✏️",
+                        key=f"edit_{i}",
+                        on_click=lambda index=i: handle_edit(index)
+                    )
+                with col3:
+                    st.button(
+                        f"🗑️",
+                        key=f"delete_{i}",
+                        on_click=lambda index=i: handle_delete(index) 
+                    )
+
+            col1, col2 = st.columns([0.04, 0.2])
 
             with col1:
                 def handle_add_service():
@@ -311,17 +313,42 @@ if st.session_state["completed"]:
                     if df_name not in st.session_state:
                         st.session_state[df_name] = pd.DataFrame()
 
-                if st.button("Finalize Quotation"):
+                if st.session_state.get("quotation_completed", False):
+                    change_page("select_sales_rep")
+                    st.stop() 
+
+                def handle_finalize_quotation():
                     services = load_services()
 
                     if services:
-                        try: 
+                        try:
+                            if "folder_id" not in st.session_state or st.session_state["folder_request_id"] != request_id:
+                                folder_id, folder_link = folder(request_id)
+                                st.session_state["folder_id"] = folder_id
+                                st.session_state["folder_link"] = folder_link
+                                st.session_state["folder_request_id"] = request_id
+                            
+                            folder_id = st.session_state.get("folder_id", "No folder created")
+
+                            if not folder_id:
+                                st.error("Failed to create or retrieve folder. Aborting finalization.")
+                                return
+                            
+                            upload_all_files_to_google_drive(folder_id)
+                            
+                            clear_temp_directory()
+
                             st.session_state["end_time"] = datetime.now(colombia_timezone)
                             end_time = st.session_state["end_time"]
 
-                            duration = (end_time - start_time).total_seconds()
+                            if st.session_state["start_time"] and st.session_state["end_time"]:
+                                duration = (end_time - st.session_state["start_time"]).total_seconds()
+                            else:
+                                st.error("Start time or end time is missing. Cannot calculate duration.")
+                                return
+    
                             end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S')
-                            log_time(start_time, end_time, duration, request_id)
+                            log_time(st.session_state["start_time"], end_time, duration, st.session_state["request_id"])
 
                             commercial = st.session_state.get("sales_rep", "Unknown")
                             client = st.session_state["client"]
@@ -334,11 +361,10 @@ if st.session_state["completed"]:
                             for service in services:
                                 base_info = {
                                     "time": end_time_str,
-                                    "request_id": f'=HYPERLINK("{folder_link}"; "{request_id}")',
+                                    "request_id": f'=HYPERLINK("{folder_link}"; "{st.session_state["request_id"]}")',
                                     "commercial": commercial,
                                     "client": client,
                                     "service": service["service"],
-
                                 }
 
                                 if "info_pallets" in service["details"]:
@@ -368,12 +394,9 @@ if st.session_state["completed"]:
                                         else "No routes provided"
                                     )
                                     service["details"]["routes_info"] = routes_str
-                                    del service["details"]["routes"] 
+                                    del service["details"]["routes"]
                                 else:
                                     service["details"]["routes_info"] = "Not applicable"
-
-                                for key in ["commercial_invoice_links", "packing_list_links", "origin_certificate_links", "additional_documents_links"]:
-                                    service["details"][key] = ", ".join(service["details"].get(key, []))
 
                                 full_record = {**base_info, **service["details"]}
 
@@ -412,10 +435,17 @@ if st.session_state["completed"]:
                             st.session_state["services"] = []
                             st.session_state["start_time"] = None
                             st.session_state["end_time"] = None
+                            st.session_state["quotation_completed"] = False
+                            initialize_state()
+                            st.session_state["page"] = "select_sales_rep"
+
                             st.success("Quotation completed!")
+                            change_page("select_sales_rep")
 
                         except Exception as e:
                             st.error(f"An error occurred: {str(e)}")
 
                     else:
                         st.warning("No services have been added to finalize the quotation.")
+
+                st.button("Finalize Quotation", on_click=handle_finalize_quotation)
