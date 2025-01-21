@@ -29,7 +29,7 @@ transport_columns = [
 ]
 
 customs_columns = [
-    "request_id", "time", "commercial", "service", "client", "incoterm", "country_origin", "country_destination", "commodity", "hs_code", "freight_cost", 
+    "request_id", "time", "commercial", "service", "client", "country_origin", "country_destination", "commodity", "hs_code", "freight_cost", 
     "number_pallets", "info_pallets_str", "insurance_cost",
     "final_comments"
 ]
@@ -283,6 +283,7 @@ def imo_questions():
         msds = st.file_uploader("Attach MSDS", accept_multiple_files=True, key="msds")
 
         msds_files = []
+        
         if msds:
             msds_files = [save_file_locally(file) for file in msds]
 
