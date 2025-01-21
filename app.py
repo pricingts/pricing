@@ -95,6 +95,7 @@ if st.session_state["completed"]:
     if "request_id" not in st.session_state or not st.session_state["request_id"]:
         st.session_state["request_id"] = generate_request_id()
         st.session_state["start_time"] = datetime.now(colombia_timezone)
+
     elif st.session_state.get("start_time") is None:
         st.session_state["start_time"] = datetime.now(colombia_timezone)
     
@@ -139,7 +140,7 @@ if st.session_state["completed"]:
                 st.warning("Please enter a valid client name before proceeding.")
             else:
                 st.session_state["client"] = client
-                st.session_state["client_role"] = client_role
+                st.session_state["temp_details"]["client_role"] = client_role
                 change_page("add_services")
 
         
@@ -174,8 +175,8 @@ if st.session_state["completed"]:
     elif st.session_state["page"] == "client_data":
 
         service = st.session_state["temp_details"].get("service", None)
-        role = st.session_state.get("client_role")
-
+        role = st.session_state["temp_details"].get("client_role", None)
+        print(role)
     #------------------------------------INTERNATIONAL FREIGHT----------------------------
         if service == "International Freight":
             st.subheader("International Freight")
