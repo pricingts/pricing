@@ -71,9 +71,11 @@ def generate_request_id():
     if "generated_ids" not in st.session_state:
         st.session_state["generated_ids"] = set()
 
+    existing_ids = load_existing_ids_from_sheets()
+
     while True:
         unique_id = "Q" + "".join(random.choices(string.digits, k=4))
-        if unique_id not in st.session_state["generated_ids"]:
+        if unique_id not in st.session_state["generated_ids"] and unique_id not in existing_ids:
             st.session_state["generated_ids"].add(unique_id)
             return unique_id
 
