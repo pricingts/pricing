@@ -319,6 +319,8 @@ def handle_routes():
     st.button("Add other route", on_click=handle_add_route)
 
 def questions_by_incoterm(incoterm, details, service, role):
+    routes_formatted = []
+
     if details is None:
         details = {}
 
@@ -836,3 +838,17 @@ def load_existing_ids_from_sheets():
     except Exception as e:
         st.error(f"Error al cargar IDs desde Google Sheets: {e}")
         return set()
+
+def go_back():
+    navigation_flow = [
+        "select_sales_rep",
+        "client_name",
+        "add_services",
+        "client_data",
+        "requested_services"
+    ]
+    current_page = st.session_state.get("page", "select_sales_rep")
+    if current_page in navigation_flow:
+        current_index = navigation_flow.index(current_page)
+        if current_index > 0: 
+            st.session_state["page"] = navigation_flow[current_index - 1]
