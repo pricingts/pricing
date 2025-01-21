@@ -142,7 +142,12 @@ if st.session_state["completed"]:
                 st.session_state["client_role"] = client_role
                 change_page("add_services")
 
-        st.button("Next", on_click=handle_next_client)
+        
+        col1, col2 = st.columns([0.04, 0.3])
+        with col1:
+            st.button("Back", on_click=go_back, key="back_client_name") 
+        with col2:
+            st.button("Next", on_click=handle_next_client)
 
     elif st.session_state["page"] == "add_services":
 
@@ -158,7 +163,11 @@ if st.session_state["completed"]:
             else:
                 change_page("client_data")
 
-        st.button("Next", on_click=handle_next)
+        col1, col2 = st.columns([0.04, 0.3])
+        with col1:
+            st.button("Back", on_click=go_back, key="back_choose_service") 
+        with col2:
+            st.button("Next", on_click=handle_next)
 
         st.session_state["temp_details"]["service"] = service
     
@@ -224,8 +233,12 @@ if st.session_state["completed"]:
                 final_details = final_questions()
                 st.session_state["temp_details"].update(final_details)
             
-            st.button("Add Service", key="add_service", on_click=handle_add_service)
-
+            col1, col2 = st.columns([0.04, 0.3])
+            with col1:
+                st.button("Back", on_click=go_back, key="back_service") 
+            with col2:
+                st.button("Add Service", key="add_service", on_click=handle_add_service)
+            
     #-----------------------------------------GROUND TRANSPORTATION-----------------------------------------
         elif service == "Ground Transportation": 
             st.subheader("Ground Transportation")
@@ -238,8 +251,12 @@ if st.session_state["completed"]:
             with st.expander("**Final Details**"):
                 final_details = final_questions()
                 st.session_state["temp_details"].update(final_details)
-            
-            st.button("Add Service", key="add_service", on_click=handle_add_service)
+
+            col1, col2 = st.columns([0.04, 0.3])
+            with col1:
+                st.button("Back", on_click=go_back, key="back_service") 
+            with col2:
+                st.button("Add Service", key="add_service", on_click=handle_add_service)
 
         elif service == "Customs Brokerage":
             st.subheader("Customs Brokerage")
@@ -253,7 +270,11 @@ if st.session_state["completed"]:
                 final_details = final_questions()
                 st.session_state["temp_details"].update(final_details)
             
-            st.button("Add Service", key="add_service", on_click=handle_add_service)
+            col1, col2 = st.columns([0.04, 0.3])
+            with col1:
+                st.button("Back", on_click=go_back, key="back_service") 
+            with col2:
+                st.button("Add Service", key="add_service", on_click=handle_add_service)
 
     elif st.session_state["page"] == "requested_services":
 
@@ -301,13 +322,13 @@ if st.session_state["completed"]:
                         on_click=lambda index=i: handle_delete(index) 
                     )
 
-            col1, col2 = st.columns([0.04, 0.2])
+            col1, col2 = st.columns([0.04, 0.1])
 
             with col1:
                 def handle_add_service():
                     change_page("add_services")
                 
-                st.button("Add Service", on_click=handle_add_service)
+                st.button("Add Another Service", on_click=handle_add_service)
 
             with col2:
 
