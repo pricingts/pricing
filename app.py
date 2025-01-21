@@ -137,7 +137,7 @@ if st.session_state["completed"]:
                 st.warning("Please enter a valid client name before proceeding.")
             else:
                 st.session_state["client"] = client
-                st.session_state["temp_details"]["client_role"] = client_role
+                st.session_state["client_role"] = client_role
                 change_page("add_services")
 
         st.button("Next", on_click=handle_next_client)
@@ -163,7 +163,7 @@ if st.session_state["completed"]:
     elif st.session_state["page"] == "client_data":
 
         service = st.session_state["temp_details"].get("service", None)
-        role = st.session_state.get("temp_details", {}).get("client_role", None)
+        role = st.session_state.get("client_role")
 
     #------------------------------------INTERNATIONAL FREIGHT----------------------------
         if service == "International Freight":
@@ -386,7 +386,7 @@ if st.session_state["completed"]:
                                     routes_str = (
                                         "\n".join(
                                             [
-                                                f"Route {i + 1}: Origin={route['origin']}, Destination={route['destination']}"
+                                                f"Route {i + 1}: {route['origin']} - {route['destination']}"
                                                 for i, route in enumerate(routes)
                                             ]
                                         )

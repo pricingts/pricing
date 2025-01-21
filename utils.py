@@ -312,8 +312,10 @@ def handle_routes():
             route["destination"] = st.text_input(
                 f"Port of Destination {i + 1}", key=f"destination_{i}", value=route["destination"]
             )
-    if st.button("Add other route"):
+    def handle_add_route():
         add_route()
+
+    st.button("Add other route", on_click=handle_add_route)
 
 def questions_by_incoterm(incoterm, details, service, role):
     if details is None:
