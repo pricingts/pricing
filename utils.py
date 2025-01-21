@@ -810,3 +810,28 @@ def upload_all_files_to_google_drive(folder_id):
 
     except Exception as e:
         st.error(f"Failed to upload files to Google Drive: {e}")
+
+def load_existing_ids_from_sheets():
+    sheet_name = "Timestamp"
+    try:
+        sheet = client_gcp.open_by_key(time_sheet_id)
+
+        worksheet_list = [ws.title for ws in sheet.worksheets()]
+        if sheet_name not in worksheet_list:
+            return set()
+    
+        worksheet = sheet.worksheet(sheet_name)
+        existing_ids = worksheet.col_values(1)
+        return set(existing_ids[1:]) 
+
+    except gspread.exceptions.SpreadsheetNotFound:
+        st.error("No se encontró la hoja de cálculo con el ID proporcionado.")
+        return set()
+
+    except gspread.exceptions.WorksheetNotFound:
+        st.error(f"No se encontró la pestaña '{sheet_name}' en la hoja de cálculo.")
+        return set()
+
+    except Exception as e:
+        st.error(f"Error al cargar IDs desde Google Sheets: {e}")
+        return set()
