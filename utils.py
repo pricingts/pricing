@@ -57,7 +57,6 @@ drive_creds = Credentials.from_service_account_info(
 )
 
 drive_service = build('drive', 'v3', credentials=drive_creds)
-
 client_gcp = gspread.authorize(sheets_creds)
 
 def folder(request_id):
@@ -73,7 +72,6 @@ def folder(request_id):
 
 def cargo(service):
     weight = None
-
     commercial_invoices = st.file_uploader("Attach Commercial Invoices", accept_multiple_files=True, key="commercial_invoices")
     packing_lists = st.file_uploader("Attach Packing Lists", accept_multiple_files=True, key="packing_lists")
 
@@ -223,6 +221,7 @@ def handle_refrigerated_cargo(cont_type, incoterm):
     temp_details = st.session_state.get("temp_details", {})
     reefer_cont_type, drayage_reefer = None, None
     pickup_thermo_king = None
+
     if cont_type == "Reefer 40'":
         reefer_types = ["Controlled Atmosphere", "Cold Treatment"]
         default_index = reefer_types.index(temp_details.get("reefer_type", "Controlled Atmosphere"))
@@ -291,9 +290,18 @@ def add_route():
 
 def handle_routes():
     initialize_routes()
+
+    def handle_remove_route(index):
+        if 0 <= index < len(st.session_state["routes"]):
+            del st.session_state["routes"][index]
+
+    def handle_add_route():
+        add_route()
+
+    cols = st.columns([0.45, 0.45, 0.1]) 
+
     for i, route in enumerate(st.session_state["routes"]):
-        st.write(f"Route {i + 1}")
-        cols = st.columns(2)
+
         with cols[0]:
             route["origin"] = st.text_input(
                 f"Port of Origin {i + 1}", key=f"origin_{i}", value=route["origin"]
@@ -302,8 +310,12 @@ def handle_routes():
             route["destination"] = st.text_input(
                 f"Port of Destination {i + 1}", key=f"destination_{i}", value=route["destination"]
             )
-    def handle_add_route():
-        add_route()
+        with cols[2]:
+            st.write("")
+            st.write("")
+            st.button(
+                "**X**", on_click=lambda i=i: handle_remove_route(i), key=f"remove_route_{i}", use_container_width=True
+            )
 
     st.button("Add other route", on_click=handle_add_route)
 
