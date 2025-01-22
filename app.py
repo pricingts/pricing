@@ -176,7 +176,7 @@ if st.session_state["completed"]:
 
         service = st.session_state["temp_details"].get("service", None)
         role = st.session_state["temp_details"].get("client_role", None)
-        print(role)
+
     #------------------------------------INTERNATIONAL FREIGHT----------------------------
         if service == "International Freight":
             st.subheader("International Freight")
@@ -391,19 +391,21 @@ if st.session_state["completed"]:
                                     "service": service["service"],
                                 }
 
-                                if "info_pallets" in service["details"]:
-                                    pallets_info = service["details"]["info_pallets"]
+                                if "packages" in service["details"]:
+                                    pallets_info = service["details"].get("packages", [])
                                     pallets_str = "\n".join(
                                         [
-                                            f"Pallet {i + 1}: "
-                                            f"Weight={pallet['weight_lcl']}KG, "
-                                            f"Volume={pallet['volume']:.2f}CBM, "
-                                            f"Dimensions={pallet['length']}x{pallet['width']}x{pallet['height']}CM"
-                                            for i, pallet in enumerate(pallets_info)
+                                            f"Package {i + 1}: "
+                                            f"Type: {pack['type_packaging']}, "
+                                            f"Quantity={pack['quantity']}, "
+                                            f"Weight={pack['weight_lcl']}KG, "
+                                            f"Volume={pack['volume']:.2f}CBM, "
+                                            f"Dimensions={pack['length']}x{pack['width']}x{pack['height']}CM"
+                                            for i, pack in enumerate(pallets_info)
                                         ]
                                     )
                                     service["details"]["info_pallets_str"] = pallets_str
-                                    del service["details"]["info_pallets"]
+                                    del service["details"]["packages"]
 
                                 if service["service"] == "International Freight":
                                     routes = service["details"].get("routes", [])

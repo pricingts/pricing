@@ -9,6 +9,7 @@ import pytz
 from datetime import datetime
 import json
 import os
+from copy import deepcopy
 
 SERVICES_FILE = "services.json"
 TEMP_DIR = "temp_uploads"
@@ -96,91 +97,79 @@ def cargo(service):
 def dimensions():
     temp_details = st.session_state.get("temp_details", {})
 
-    if "number_pallets" not in st.session_state:
-        st.session_state.number_pallets = temp_details.get("number_pallets", 1)
+    if "packages" not in st.session_state:
+        st.session_state.packages = []
 
-    number_pallets = st.number_input(
-        "Number of pallets",
-        key="number_pallets_input",
-        value=int(st.session_state.number_pallets),
-        step=1,
-        min_value=1
-    )
+    def add_package():
+        st.session_state.packages.append({
+            "type_packaging": "Pallet",
+            "quantity": 0,
+            "weight_lcl": 0,
+            "volume": 0.0,
+            "length": 0,
+            "width": 0,
+            "height": 0
+        })
 
-    if number_pallets != st.session_state.number_pallets:
-        st.session_state.number_pallets = number_pallets
-    
-    info_pallets = []
+    def remove_package(index):
+        if 0 <= index < len(st.session_state.packages):
+            del st.session_state.packages[index]
 
-    if st.session_state.number_pallets <= 7: 
+    def copy_package(index):
+        if 0 <= index < len(st.session_state.packages):
+            copied_package = {
+                "type_packaging": st.session_state.packages[index]["type_packaging"],
+                "quantity": st.session_state.packages[index]["quantity"],
+                "weight_lcl": st.session_state.packages[index]["weight_lcl"],
+                "volume": st.session_state.packages[index]["volume"],
+                "length": st.session_state.packages[index]["length"],
+                "width": st.session_state.packages[index]["width"],
+                "height": st.session_state.packages[index]["height"]
+            }
+            st.session_state.packages.append(copied_package)
+        else:
+            st.error("Invalid index. Cannot copy package.")
 
-        for i in range(1, st.session_state.number_pallets + 1):  
-            st.markdown(f"### Pallet {i} Details") 
-            weight_lcl = st.number_input(
-                f"Pallet {i} weight (KG)", 
-                key=f"weight_lcl_{i}", 
-                value=temp_details.get(f"weight_lcl_{i}", 0), 
-                step=1,
-                min_value=0
+    for i in range(len(st.session_state.packages)):
+        st.markdown(f"**Package {i + 1}**")
+
+        col1, col2, col3 = st.columns(3)
+        col4, col5, col6, col7 = st.columns(4)
+        col8, col9 = st.columns([0.04, 0.3])
+
+        with col1:
+            st.session_state.packages[i]["type_packaging"] = st.selectbox(
+                "Packaging Type", ["Pallet", "Box", "Bag"], 
+                index=["Pallet", "Box", "Bag"].index(st.session_state.packages[i].get("type_packaging", "Pallet")),
+                key=f"type_packaging_{i}"
             )
-            volume = st.number_input(
-                f"Pallet {i} volume (CBM)", 
-                key=f"volume_{i}", 
-                value=temp_details.get(f"volume_{i}", 0.0), 
-                step=0.01,
-                min_value=0.0
-            )
-            length = st.number_input(
-                f"Pallet {i} length (CM)", 
-                key=f"length_{i}", 
-                value=temp_details.get(f"length_{i}", 0), 
-                step=1,
-                min_value=0
-            )
-            width = st.number_input(
-                f"Pallet {i} width (CM)", 
-                key=f"width_{i}", 
-                value=temp_details.get(f"width_{i}", 0), 
-                step=1,
-                min_value=0
-            )
-            height = st.number_input(
-                f"Pallet {i} height (CM)", 
-                key=f"height_{i}", 
-                value=temp_details.get(f"height_{i}", 0), 
-                step=1,
-                min_value=0
-            )
+        with col2:
+            st.session_state.packages[i]["quantity"] = st.number_input(
+                "Quantity", key=f"quantity_{i}", value=st.session_state.packages[i].get("quantity", 0), step=1, min_value=0)
+        with col3:
+            st.session_state.packages[i]["weight_lcl"] = st.number_input(
+                "Weight (KG)", key=f"weight_lcl_{i}", value=st.session_state.packages[i].get("weight_lcl", 0), step=1, min_value=0)
+        with col4:
+            st.session_state.packages[i]["volume"] = st.number_input(
+                "Volume (CBM)", key=f"volume_{i}", value=st.session_state.packages[i].get("volume", 0.0), step=0.01, min_value=0.0)
+        with col5:
+            st.session_state.packages[i]["length"] = st.number_input(
+                "Length (CM)", key=f"length_{i}", value=st.session_state.packages[i].get("length", 0), step=1, min_value=0)
+        with col6:
+            st.session_state.packages[i]["width"] = st.number_input(
+                "Width (CM)", key=f"width_{i}", value=st.session_state.packages[i].get("width", 0), step=1, min_value=0)
+        with col7:
+            st.session_state.packages[i]["height"] = st.number_input(
+                "Height (CM)", key=f"height_{i}", value=st.session_state.packages[i].get("height", 0), step=1, min_value=0)
+        with col8:
+            st.button("Copy", on_click=lambda i=i: copy_package(i), key=f"copy_{i}")
+        with col9:
+            st.button("Remove", on_click=lambda i=i: remove_package(i), key=f"remove_{i}")
 
-            if volume == 0 and length > 0 and width > 0 and height > 0:
-                volume = (length * width * height) 
-                st.write(f"Calculated Volume for Pallet {i}: {volume:.2f} CBM")
+    st.button("Add Package", on_click=add_package)
 
-            info_pallets.append({
-                "weight_lcl": weight_lcl,
-                "volume": volume,
-                "length": length,
-                "width": width,
-                "height": height
-            })
+    return {"packages": st.session_state.packages}
 
-        return {
-            "number_pallets": st.session_state.number_pallets,
-            "info_pallets": info_pallets
-        }
-
-    else:
-        info_pallets_files = st.file_uploader("Attach Pallets Information", accept_multiple_files=True, 
-        key="info_pallets_files")
-
-        pallets_files = []
-        if info_pallets_files:
-            pallets_files = [save_file_locally(file) for file in info_pallets_files]
-
-        return {
-            "number_pallets": st.session_state.number_pallets,
-            "pallets_files": pallets_files
-        }
 
 def add_route():
     st.session_state["routes"].append({"origin": "", "destination": ""})
