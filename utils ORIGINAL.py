@@ -10,29 +10,28 @@ from datetime import datetime
 import json
 import os
 from copy import deepcopy
-import pandas as pd
 
 SERVICES_FILE = "services.json"
 TEMP_DIR = "temp_uploads"
 
 freight_columns = [
-    "request_id", "time", "commercial", "service", "client", "incoterm", "transport_type", "modality", "routes_info", "pickup_address", "zip_code_origin", "delivery_address", "zip_code_destination", 
+    "request_id", "time", "commercial", "service", "client", "client_role", "incoterm", "transport_type", "modality", "routes_info", "pickup_address", "zip_code_origin", "delivery_address", "zip_code_destination", 
     "commodity", "hs_code", "cargo_value", "freight_cost", "insurance_cost", "weight", "destination_cost", 
-    "type_container", "reinforced", "suitable_food", "imo_cargo", "un_code", "msds", "positioning", "pickup_city", "lcl_fcl_mode", "drayage_reefer", "reefer_cont_type", "pickup_thermo_king", "temperature", "temperature_control ",
-    "info_pallets_str", "lcl_description", "not_stackable",
+    "type_container", "reinforced", "suitable_food", "imo_cargo", "un_code", "msds", "positioning", "pickup_city", "lcl_fcl_mode", "drayage_reefer", "reefer_cont_type", "pickup_thermo_king",
+    "number_pallets_input", "info_pallets_str", "pallets_links", "lcl_description", "not_stackable",
     "final_comments"
 ]
 
 transport_columns = [
-    "request_id", "time", "commercial", "service", "client", "country_origin", "city_origin", "pickup_address", "zip_code_origin", "country_destination", "city_destination", "delivery_address", "zip_code_destination", "commodity", "hs_code",
+    "request_id", "time", "commercial", "service", "client", "pickup_address", "zip_code_origin", "delivery_address", "zip_code_destination", "commodity", "hs_code",
     "ground_service", "temperature",
-    "info_pallets_str", "pallets_links", "lcl_description", "not_stackable",
+    "number_pallets_input", "info_pallets_str", "pallets_links", "lcl_description", "not_stackable",
     "final_comments"
 ]
 
 customs_columns = [
     "request_id", "time", "commercial", "service", "client", "country_origin", "country_destination", "commodity", "hs_code", "freight_cost", 
-    "info_pallets_str", "insurance_cost",
+    "number_pallets", "info_pallets_str", "insurance_cost",
     "final_comments"
 ]
 
@@ -60,12 +59,8 @@ drive_creds = Credentials.from_service_account_info(
 drive_service = build('drive', 'v3', credentials=drive_creds)
 client_gcp = gspread.authorize(sheets_creds)
 
-@st.cache_data(ttl=100000000)
-def load_csv(file):
-    df = pd.read_csv(file)
-    return df
-
 def folder(request_id):
+
     if validate_shared_drive_folder(PARENT_FOLDER_ID):
         folder_id = create_folder(request_id, PARENT_FOLDER_ID)
         if not folder_id:
@@ -99,7 +94,6 @@ def cargo(service):
 
 def dimensions():
     temp_details = st.session_state.get("temp_details", {})
-    transport_type = st.session_state["temp_details"].get("transport_type", None)
 
     if "packages" not in st.session_state:
         st.session_state.packages = []
@@ -112,8 +106,7 @@ def dimensions():
             "volume": 0.0,
             "length": 0,
             "width": 0,
-            "height": 0,
-            "kilovolume": 0.0
+            "height": 0
         })
 
     def remove_package(index):
@@ -129,8 +122,7 @@ def dimensions():
                 "volume": st.session_state.packages[index]["volume"],
                 "length": st.session_state.packages[index]["length"],
                 "width": st.session_state.packages[index]["width"],
-                "height": st.session_state.packages[index]["height"],
-                "kilovolume": st.session_state.packages[index]["kilovolume"],
+                "height": st.session_state.packages[index]["height"]
             }
             st.session_state.packages.append(copied_package)
         else:
@@ -156,32 +148,17 @@ def dimensions():
             st.session_state.packages[i]["weight_lcl"] = st.number_input(
                 "Weight (KG)", key=f"weight_lcl_{i}", value=st.session_state.packages[i].get("weight_lcl", 0), step=1, min_value=0)
         with col4:
+            st.session_state.packages[i]["volume"] = st.number_input(
+                "Volume (CBM)", key=f"volume_{i}", value=st.session_state.packages[i].get("volume", 0.0), step=0.01, min_value=0.0)
+        with col5:
             st.session_state.packages[i]["length"] = st.number_input(
                 "Length (CM)", key=f"length_{i}", value=st.session_state.packages[i].get("length", 0), step=1, min_value=0)
-        with col5:
+        with col6:
             st.session_state.packages[i]["width"] = st.number_input(
                 "Width (CM)", key=f"width_{i}", value=st.session_state.packages[i].get("width", 0), step=1, min_value=0)
-        with col6:
+        with col7:
             st.session_state.packages[i]["height"] = st.number_input(
                 "Height (CM)", key=f"height_{i}", value=st.session_state.packages[i].get("height", 0), step=1, min_value=0)
-            
-            length = st.session_state.packages[i]["length"]
-            width = st.session_state.packages[i]["width"]
-            height = st.session_state.packages[i]["height"]
-            if length > 0 and width > 0 and height > 0:
-                st.session_state.packages[i]["volume"] = (length * width * height) / 1000000 #M3
-
-        with col7:
-            if transport_type == "Air":
-                st.session_state.packages[i]["kilovolume"] = st.session_state.packages[i]["volume"] * 166.6 #KV
-            
-            if transport_type == "Air":
-                st.session_state.packages[i]["kilovolume"] = st.number_input(
-                    "Kilovolume (KVM)", key=f"kilovolume_{i}", value=st.session_state.packages[i].get("kilovolume", 0.0), step=0.1, min_value=0.0)
-            else:
-                st.session_state.packages[i]["volume"] = st.number_input(
-                    "Volume (CBM)", key=f"volume_{i}", value=st.session_state.packages[i].get("volume", 0.0), step=0.01, min_value=0.0)
-
         with col8:
             st.button("Copy", on_click=lambda i=i: copy_package(i), key=f"copy_{i}")
         with col9:
@@ -190,6 +167,10 @@ def dimensions():
     st.button("Add Package", on_click=add_package)
 
     return {"packages": st.session_state.packages}
+
+
+def add_route():
+    st.session_state["routes"].append({"origin": "", "destination": ""})
 
 def common_questions():
     temp_details = st.session_state.get("temp_details", {})
@@ -211,6 +192,8 @@ def common_questions():
     reinforced = st.checkbox("Reinforced", key="reinforced", value=temp_details.get("reinforced", False))
     suitable_food = st.checkbox("Suitable for foodstuffs", key="suitable_food", value=temp_details.get("suitable_food", False))
 
+    p_imo = imo_questions()
+
     positioning = st.radio(
         "Container Positioning",
         ["In yard", "At port", "Not Applicable"],
@@ -228,6 +211,7 @@ def common_questions():
         "type_container": type_container,
         "reinforced": reinforced,
         "suitable_food": suitable_food,
+        **p_imo,
         "positioning": positioning,
         "pickup_city": pickup_city,
         "lcl_fcl_mode": lcl_fcl_mode
@@ -248,8 +232,9 @@ def handle_refrigerated_cargo(cont_type, incoterm):
         pickup_thermo_king = st.checkbox("Thermo King Pick up", 
                                     key="pickup_thermo_king", value=temp_details.get("pickup_thermo_king", False))
 
-        drayage_reefer = st.checkbox("Drayage Reefer", 
-                                    key="drayage_reefer", value=temp_details.get("drayage_reefer", False))
+        if incoterm in ["DDP", "DAP"]:
+            drayage_reefer = st.checkbox("Drayage Reefer", 
+                                        key="drayage_reefer", value=temp_details.get("drayage_reefer", False))
         return {
         "reefer_cont_type": reefer_cont_type,
         "pickup_thermo_king": pickup_thermo_king,
@@ -306,9 +291,6 @@ def add_route():
 def handle_routes():
     initialize_routes()
 
-    csv_data = st.session_state.get("ports_csv", {})
-    port_countries = csv_data["port_country"].tolist()
-
     def handle_remove_route(index):
         if 0 <= index < len(st.session_state["routes"]):
             del st.session_state["routes"][index]
@@ -321,20 +303,12 @@ def handle_routes():
     for i, route in enumerate(st.session_state["routes"]):
 
         with cols[0]:
-            route["origin"] = st.selectbox(
-                f"Origin {i + 1}",
-                options=[""] + port_countries,
-                key=f"origin_{i}",
-                index=port_countries.index(route["origin"]) + 1
-                if route["origin"] in port_countries else 0,
+            route["origin"] = st.text_input(
+                f"Port of Origin {i + 1}", key=f"origin_{i}", value=route["origin"]
             )
         with cols[1]:
-            route["destination"] = st.selectbox(
-                f"Destination {i + 1}",
-                options=[""] + port_countries,
-                key=f"destination_{i}",
-                index=port_countries.index(route["destination"]) + 1
-                if route["destination"] in port_countries else 0,
+            route["destination"] = st.text_input(
+                f"Port of Destination {i + 1}", key=f"destination_{i}", value=route["destination"]
             )
         with cols[2]:
             st.write("")
@@ -345,131 +319,152 @@ def handle_routes():
 
     st.button("Add other route", on_click=handle_add_route)
 
-
-def questions_by_incoterm(incoterm, details, service):
+def questions_by_incoterm(incoterm, details, service, role):
     routes_formatted = []
 
     if details is None:
         details = {}
 
-    handle_routes()
-    routes = st.session_state.get("routes", [])
-    routes_formatted = [
-        {"origin": route["origin"], "destination": route["destination"]}
-        for route in routes
-    ]
+    if role == "Consignee":  # IMPORTATION
+        if incoterm in ["EXW", "FCA", "FOB", "CFR", "CIF", "FAS", "DAP", "CIP", "CPT"]:
+            if incoterm in ["EXW", "FCA", "FOB", "FAS", "CIP", "CPT", "CFR"]:
+                handle_routes()
+                routes = st.session_state.get("routes", [])
+                routes_formatted = [
+                {"origin": route["origin"], "destination": route["destination"]}
+                for route in routes]
+            
+            if incoterm not in ["CIF", "DAP", "FCA", "CFR", "CIP", "FAS", "CPT"]:
+                pickup_address = st.text_input("Pickup Address", key="pickup_address", value=details.get("pickup_address", ""))
+                details["pickup_address"] = pickup_address
 
-    commodity = st.text_input("Commodity", key="commodity", value=details.get("commodity", ""))
-    hs_code = st.text_input("HS Code", key="hs_code", value=details.get("hs_code", ""))
+                zip_code_origin = st.text_input("Zip Code City of Origin", key="zip_code_origin", value=details.get("zip_code_origin", ""))
+                details["zip_code_origin"] = zip_code_origin
 
-    p_imo = imo_questions()
-    details.update(p_imo)      
+            if incoterm in ["DDP", "EXW", "FOB", "CIF", "FCA", "CFR", "CIP", "FAS", "CPT"]:
+                delivery_address = st.text_input("Delivery Address", key="delivery_address", value=details.get("delivery_address", ""))
+                zip_code_destination = st.text_input("Zip Code City of Destination", key="zip_code_destination", value=details.get("zip_code_destination", ""))
+                details.update({"delivery_address": delivery_address, "zip_code_destination": zip_code_destination})
 
-    pickup_address = details.get("pickup_address", None)
-    zip_code_origin = details.get("zip_code_origin", None)
-    customs_origin = details.get("customs_origin", False)
-    delivery_address = details.get("delivery_address", None)
-    zip_code_destination = details.get("zip_code_destination", None)
-    insurance_required = details.get("insurance_required", False)
-    cargo_value = details.get("cargo_value", None)
-    customs_info = {}
-
-    if incoterm in ["FCA", "EXW", "DDP", "DAP"]:
-        pickup_address = st.text_input("Pickup Address", key="pickup_address", value=pickup_address)
-        zip_code_origin = st.text_input("Zip Code City of Origin", key="zip_code_origin", value=zip_code_origin)
-
-        if incoterm == "FCA":
-            st.write("Under this term, the responsibility for customs clearance at origin typically lies with the shipper. However, in certain cases, the consignee assumes this responsibility. In our quotation, we include the origin costs when applicable.")
-
-        if incoterm in ["EXW", "DDP", "DAP"]:
-            delivery_address = st.text_input("Delivery Address", key="delivery_address", value=delivery_address)
-            zip_code_destination = st.text_input("Zip Code City of Destination", key="zip_code_destination", value=zip_code_destination)
+            commodity = st.text_input("Commodity", key="commodity", value=details.get("commodity", ""))
+            hs_code = st.text_input("HS Code", key="hs_code", value=details.get("hs_code", ""))
             cargo_value = st.number_input("Cargo Value (USD)", key="cargo_value", value=details.get("cargo_value", 0))
             customs_info = customs_questions(service, customs=True)
 
-        customs_origin = st.checkbox("Quote customs at origin", key="customs_origin", value=customs_origin)
+            destination_cost = None
+            if incoterm == "FOB":
+                destination_cost = st.checkbox("Quote surcharges at destination", key="destination_cost", value=details.get("destination_cost", False))
 
-    elif incoterm in ["CIF", "CFR", "DDP", "DAP"]:
-        destination_cost = st.checkbox("Quote surcharges at destination", key="destination_cost", value=details.get("destination_cost", False))
-        insurance_required = st.checkbox("Insurance Required", key="insurance_required", value=insurance_required)
-        if insurance_required:
-            insurance = insurance_questions()
-            details.update(insurance)
-            cargo_value = st.number_input("Cargo Value (USD)", key="cargo_value", value=details.get("cargo_value", 0))
-        details["destination_cost"] = destination_cost
+            details.update({
+                "incoterm": incoterm,
+                "commodity": commodity,
+                "hs_code": hs_code,
+                "cargo_value": cargo_value,
+                "destination_cost": destination_cost,
+                "routes": routes_formatted,
+                **customs_info,
 
-    elif incoterm in ["CIP"]:
-        insurance_required = st.checkbox("Insurance Required", key="insurance_required", value=insurance_required)
-        if insurance_required:
-            insurance = insurance_questions()
-            details.update(insurance)
-            cargo_value = st.number_input("Cargo Value (USD)", key="cargo_value", value=details.get("cargo_value", 0))
-        details["destination_cost"] = destination_cost
+            })
 
-    details.update({
-        "incoterm": incoterm,
-        "routes": routes_formatted,
-        "commodity": commodity,
-        "hs_code": hs_code,
-        **p_imo,
-        "pickup_address": pickup_address,
-        "zip_code_origin": zip_code_origin,
-        "delivery_address": delivery_address,
-        "zip_code_destination": zip_code_destination,
-        "cargo_value": cargo_value,
-        **customs_info,
-        "customs_origin": customs_origin,
-        "insurance_required": insurance_required,
-    })
+    elif role == "Shipper":  # EXPORTATION
+        if incoterm in ["FCA", "FAS", "FOB", "CFR", "CIF", "CIP", "CPT"]:
+            handle_routes()
+            routes = st.session_state.get("routes", [])
+            routes_formatted = [
+                {"origin": route["origin"], "destination": route["destination"]}
+                for route in routes]
+
+            pickup_address = st.text_input("Pickup Address", key="pickup_address", value=details.get("pickup_address", ""))
+            zip_code_origin = st.text_input("Zip Code City of Origin", key="zip_code_origin", value=details.get("zip_code_origin", ""))
+            commodity = st.text_input("Commodity", key="commodity", value=details.get("commodity", ""))
+            hs_code = st.text_input("HS Code", key="hs_code", value=details.get("hs_code", ""))
+            customs_info = customs_questions(service, customs=True)
+
+            if incoterm == "CIF":
+                insurance = insurance_questions()
+                details.update(insurance)
+
+            destination_cost = None
+            if incoterm in ["CIF", "CFR"]:
+                destination_cost = st.checkbox("Quote surcharges at destination", key="destination_cost", value=details.get("destination_cost", False))
+            
+            details.update({
+                "incoterm": incoterm,
+                "pickup_address": pickup_address,
+                "zip_code_origin": zip_code_origin,
+                "commodity": commodity,
+                "hs_code": hs_code,
+                "destination_cost": destination_cost,
+                "routes": routes_formatted,
+                **customs_info,
+            })
+
+        elif incoterm in ["DDP", "DAP"]:
+            handle_routes()
+            routes = st.session_state.get("routes", [])
+            routes_formatted = [
+                {"origin": route["origin"], "destination": route["destination"]}
+                for route in routes]
+
+            pickup_address = st.text_input("Pickup Address", key="pickup_address", value=details.get("pickup_address", ""))
+            zip_code_origin = st.text_input("Zip Code City of Origin", key="zip_code_origin", value=details.get("zip_code_origin", ""))
+            delivery_address = st.text_input("Delivery Address", key="delivery_address", value=details.get("delivery_address", ""))
+            zip_code_destination = st.text_input("Zip Code City of Destination", key="zip_code_destination", value=details.get("zip_code_destination", ""))
+            commodity = st.text_input("Commodity", key="commodity", value=details.get("commodity", ""))
+            hs_code = st.text_input("HS Code", key="hs_code", value=details.get("hs_code", ""))
+
+            customs_info = None
+            if incoterm == "DDP": 
+                customs_info = customs_questions(service, customs=True)
+
+                details.update({
+                "incoterm": incoterm,
+                "pickup_address": pickup_address,
+                "zip_code_origin": zip_code_origin,
+                "delivery_address": delivery_address,
+                "zip_code_destination": zip_code_destination,
+                "commodity": commodity,
+                "hs_code": hs_code,
+                "routes": routes_formatted,
+                **customs_info,
+            })
+
+
+            details.update({
+                "incoterm": incoterm,
+                "pickup_address": pickup_address,
+                "zip_code_origin": zip_code_origin,
+                "delivery_address": delivery_address,
+                "zip_code_destination": zip_code_destination,
+                "commodity": commodity,
+                "hs_code": hs_code,
+                "routes": routes_formatted
+            })
 
     return details, routes
 
-
 def ground_transport():
     temp_details = st.session_state.get("temp_details", {})
-    data = st.session_state.get("cities_csv", [])
-    countries = data["Country"].dropna().unique().tolist()
-
-    col1, col2 = st.columns(2)
-    with col1:
-        country_origin = st.selectbox("Country of Origin", options=[""] + countries, key="country_origin",
-            index=(countries.index(temp_details.get("country_origin", "")) + 1)
-            if temp_details.get("country_origin", "") in countries else 0,
+    pickup_address = st.text_input(
+            "Pickup Address",
+            key="pickup_address",
+            value=temp_details.get("pickup_address", "")
         )
-
-    filtered_cities = []
-    if country_origin:
-        filtered_cities = (data[data["Country"] == country_origin]["City"].dropna().unique().tolist())
-
-    with col2:
-        city_origin = st.selectbox("City of Origin", options=[""] + filtered_cities, key="city_origin",
-            index=(filtered_cities.index(temp_details.get("city_origin", "")) + 1)
-            if temp_details.get("city_origin", "") in filtered_cities else 0,
+    zip_code_origin = st.text_input(
+        "Zip Code City of Origin", 
+        key="zip_code_origin", 
+        value=temp_details.get("zip_code_origin", "")
+    )
+    delivery_address = st.text_input(
+        "Delivery Address",
+        key="delivery_address",
+        value=temp_details.get("delivery_address", "")
+    )
+    zip_code_destination = st.text_input(
+        "Zip Code City of Destination", 
+        key="zip_code_destination", 
+        value=temp_details.get("zip_code_destination", "")
         )
-
-    pickup_address = st.text_input("Pickup Address", key="pickup_address", value=temp_details.get("pickup_address", ""))
-    zip_code_origin = st.text_input("Zip Code City of Origin", key="zip_code_origin", value=temp_details.get("zip_code_origin", ""))
-
-    col1, col2 = st.columns(2)
-    with col1:
-        country_destination = st.selectbox(
-            "Country of Destination", options=[""] + countries, key="country_destination",
-            index=(countries.index(temp_details.get("country_destination", "")) + 1)
-            if temp_details.get("country_destination", "") in countries else 0,
-        )
-
-    filtered_cities_destination = []
-    if country_destination:
-        filtered_cities_destination = (data[data["Country"] == country_destination]["City"].dropna().unique().tolist())
-
-    with col2:
-        city_destination = st.selectbox("City of Destination", options=[""] + filtered_cities_destination, key="city_destination",
-            index=(filtered_cities_destination.index(temp_details.get("city_destination", "")) + 1)
-            if temp_details.get("city_destination", "") in filtered_cities_destination else 0,
-        )
-
-    delivery_address = st.text_input("Delivery Address", key="delivery_address", value=temp_details.get("delivery_address", ""))
-    zip_code_destination = st.text_input("Zip Code City of Destination", key="zip_code_destination", value=temp_details.get("zip_code_destination", ""))
 
     commodity = st.text_input("Commodity", key="commodity", value=temp_details.get("commodity", ""))
     hs_code = st.text_input("HS Code", key="hs_code", value=temp_details.get("hs_code", ""))
@@ -491,12 +486,8 @@ def ground_transport():
     
     if ground_service in ["Mula Refrigerada", "Drayage Reefer 20 STD", "Drayage Reefer 40 STD"]:
         temperature = st.number_input(
-            "Temperature range °C", key="temperature", value=temp_details.get("temperature", None))
+            "Temperature °C", key="temperature", value=temp_details.get("temperature", None))
         return {
-            "country_origin": country_origin,
-            "city_origin": city_origin,
-            "country_destination": country_destination,
-            "city_destination": city_destination,
             "pickup_address": pickup_address,
             "zip_code_origin": zip_code_origin,
             "delivery_address": delivery_address,
@@ -509,10 +500,6 @@ def ground_transport():
     if ground_service == "LTL":
         dimensions_info = dimensions() or {}
         return {
-            "country_origin": country_origin,
-            "city_origin": city_origin,
-            "country_destination": country_destination,
-            "city_destination": city_destination,
             "pickup_address": pickup_address,
             "zip_code_origin": zip_code_origin,
             "delivery_address": delivery_address,
@@ -525,10 +512,6 @@ def ground_transport():
         }
 
     return {
-        "country_origin": country_origin,
-        "city_origin": city_origin,
-        "country_destination": country_destination,
-        "city_destination": city_destination,
         "pickup_address": pickup_address,
         "zip_code_origin": zip_code_origin,
         "delivery_address": delivery_address,
@@ -538,27 +521,14 @@ def ground_transport():
         "ground_service": ground_service
     }
 
-def lcl_questions(transport_type):
+def lcl_questions():
     temp_details = st.session_state.get("temp_details", {})
-    temperature, temperature_control = None, None
+    dimensions_info = None
 
     dimensions_info = dimensions()
 
-    if transport_type == "Air":
-        temperature_control = st.checkbox(
-            "Temperature control required",
-            key="temperature_control",
-            value=temp_details.get("temperature_control", False)
-        )
-        if temperature_control:
-            temperature = st.text_input(
-                "Temperature range °C",
-                key="temperature",
-                value=temp_details.get("temperature", "")
-            )
-
     lcl_description = st.text_area(
-        "Relevant Information",
+        "Weight information for each piece, number of pieces, and dimensions per piece.",
         key="lcl_description",
         value=temp_details.get("lcl_description", "")
     )
@@ -567,37 +537,33 @@ def lcl_questions(transport_type):
         key="not_stackable",
         value=temp_details.get("not_stackable", False)
     )
+    imo_info = imo_questions()
 
     return {
         **dimensions_info,
-        "temperature_control": temperature_control,
-        "temperature": temperature,
         "lcl_description": lcl_description,
-        "stackable": stackable
+        "stackable": stackable,
+        **imo_info
     }
 
 
 def customs_questions(service, customs=False):
     temp_details = st.session_state.get("temp_details", {})
-    data = st.session_state.get("cities_csv", [])
-    countries = data["Country"].dropna().unique().tolist()
     customs_data = {}
     if not customs:
-        col1, col2 = st.columns(2)
-        with col1:
-            country_origin = st.selectbox("Country of Origin", options=[""] + countries, key="country_origin",
-                index=(countries.index(temp_details.get("country_origin", "")) + 1)
-                if temp_details.get("country_origin", "") in countries else 0,
+        country_origin = st.text_input(
+                "Country of Origin",
+                key="country_origin",
+                value=temp_details.get("country_origin", "")
             )
-        with col2:
-            country_destination = st.selectbox(
-            "Country of Destination", options=[""] + countries, key="country_destination",
-            index=(countries.index(temp_details.get("country_destination", "")) + 1)
-            if temp_details.get("country_destination", "") in countries else 0,
+        country_destination = st.text_input(
+            "Country of Destination",
+            key="country_destination",
+            value=temp_details.get("country_destination", "")
         )
+        
         commodity = st.text_input("Commodity", key="commodity", value=temp_details.get("commodity", ""))
         hs_code = st.text_input("HS Code", key="hs_code", value=temp_details.get("hs_code", ""))
-        imo = imo_questions()
 
         dimensions_info = dimensions()
         customs_data.update({
@@ -605,7 +571,6 @@ def customs_questions(service, customs=False):
             "country_destination": country_destination,
             "commodity": commodity,
             "hs_code": hs_code,
-            **imo,
             **dimensions_info,
         })
 
@@ -693,6 +658,7 @@ def validate_service_details(temp_details):
     elif service == "Ground Transportation":
         pickup_address = temp_details.get("pickup_address", [])
         delivery_address = temp_details.get("delivery_address", [])
+
         if not pickup_address:
             errors.append("Pick up address is required.")
         if not delivery_address:
@@ -729,7 +695,6 @@ def validate_service_details(temp_details):
 
 
 def handle_add_service():
-    prefill_temp_details()
     temp_details = st.session_state.get("temp_details", {})
     if not temp_details:
         st.warning("Please provide the service details before adding.")
@@ -976,26 +941,3 @@ def go_back():
         current_index = navigation_flow.index(current_page)
         if current_index > 0: 
             st.session_state["page"] = navigation_flow[current_index - 1]
-
-def load_shared_values_from_services():
-    services = load_services()
-    shared_values = {}
-
-    for service in services:
-        details = service.get("details", {})
-        for key, value in details.items():
-            if key in shared_values and shared_values[key] != value:
-                continue
-            shared_values[key] = value
-
-    return shared_values
-
-def prefill_temp_details():
-    shared_values = load_shared_values_from_services()
-    temp_details = st.session_state.get("temp_details", {})
-
-    for key, value in shared_values.items():
-        if key not in temp_details: 
-            temp_details[key] = value
-
-    st.session_state["temp_details"] = temp_details

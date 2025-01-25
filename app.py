@@ -34,6 +34,7 @@ drive_service = build('drive', 'v3', credentials=drive_creds)
 client_gcp = gspread.authorize(sheets_creds)
 colombia_timezone = pytz.timezone('America/Bogota')
 
+
 #--------------------------------------UTILITY FUNCTIONS--------------------------------
 def clear_temp_directory():
     for root, _, files in os.walk(TEMP_DIR):
@@ -51,11 +52,13 @@ def initialize_state():
         "start_time": datetime.now(colombia_timezone),
         "end_time": None,
         "uploaded_files": {},
-        "temp_details": {},
+        "temp_details": {"routes": [], "packages": []},
         "generated_ids": set(),
         "request_id": None,
         "final_comments": "",
         "initialized": True,
+        "ports_csv": None,
+        "cities_csv": None
     }
     for key, value in default_values.items():
         if key not in st.session_state:
@@ -66,6 +69,18 @@ def initialize_state():
 
     reset_json()
     clear_temp_directory()
+
+    if st.session_state["ports_csv"] is None:
+        try:
+            st.session_state["ports_csv"] = load_csv("ports_world.csv")
+        except Exception as e:
+            st.error("Error loading CSV data. Please check the file path or format.")
+
+    if st.session_state["cities_csv"] is None:
+        try:
+            st.session_state["cities_csv"] = load_csv("cities_world.csv")
+        except Exception as e:
+            st.error("Error loading CSV data. Please check the file path or format.")
 
 def generate_request_id():
     if "generated_ids" not in st.session_state:
@@ -78,9 +93,6 @@ def generate_request_id():
         if unique_id not in st.session_state["generated_ids"] and unique_id not in existing_ids:
             st.session_state["generated_ids"].add(unique_id)
             return unique_id
-
-def change_page(new_page):
-    st.session_state["page"] = new_page
 
 #------------------------------------APP----------------------------------------
 col1, col2, col3 = st.columns([1, 2, 1])
@@ -133,14 +145,12 @@ if st.session_state["completed"]:
         st.subheader(f"Hello, {sales_rep}!")
 
         client = st.text_input("Who is your client?", key="client_input")
-        client_role = st.radio("Client Role", ["Shipper", "Consignee"], key="role")
 
         def handle_next_client():
             if not client or client.strip() == "":
                 st.warning("Please enter a valid client name before proceeding.")
             else:
                 st.session_state["client"] = client
-                st.session_state["temp_details"]["client_role"] = client_role
                 change_page("add_services")
 
         
@@ -162,6 +172,7 @@ if st.session_state["completed"]:
             if service == "-- Services --":
                 st.warning("Please select a valid service before proceeding.")
             else:
+                st.session_state["temp_details"]["service"] = service
                 change_page("client_data")
 
         col1, col2 = st.columns([0.04, 0.3])
@@ -169,13 +180,13 @@ if st.session_state["completed"]:
             st.button("Back", on_click=go_back, key="back_choose_service") 
         with col2:
             st.button("Next", on_click=handle_next)
-
-        st.session_state["temp_details"]["service"] = service
     
     elif st.session_state["page"] == "client_data":
 
         service = st.session_state["temp_details"].get("service", None)
-        role = st.session_state["temp_details"].get("client_role", None)
+
+        prefill_temp_details()
+        temp_details = st.session_state["temp_details"]
 
     #------------------------------------INTERNATIONAL FREIGHT----------------------------
         if service == "International Freight":
@@ -190,21 +201,21 @@ if st.session_state["completed"]:
                 modality_options = ["FCL", "LCL"]
 
             modality = st.selectbox("Modality", modality_options, key="modality")
+            st.session_state["temp_details"]["modality"] = modality
 
             with st.expander("**Cargo Details**"):
-                incoterms_by_role = {
-                    "Shipper": ["FOB", "CIF", "DAP", "FCA", "CFR", "DDP", "CIP", "FAS", "CPT"],
-                    "Consignee": ["EXW", "FOB", "CIF", "DAP", "FCA", "CFR", "CIP", "FAS", "CPT"]
+
+                incoterms_op = {
+                    "FCL": ["FOB", "FCA", "CIF", "CFR", "EXW", "DDP", "DAP"],
+                    "LCL": ["FOB", "FCA", "EXW", "DDP", "DAP", "CIP", "CPT"]
                 }
 
-                incoterm_options = incoterms_by_role.get(role, [])
-                if not incoterm_options:
-                    st.warning("No incoterm options available for the selected role.")
+                incoterm_options = incoterms_op.get(modality, [])
 
                 incoterm = st.selectbox("Select Incoterm", incoterm_options, key="incoterm")
 
                 if incoterm:
-                    incoterm_result = questions_by_incoterm(incoterm, st.session_state["temp_details"], service, role)
+                    incoterm_result = questions_by_incoterm(incoterm, st.session_state["temp_details"], service)
 
                     if isinstance(incoterm_result, tuple):
                         incoterm_details, routes = incoterm_result
@@ -222,12 +233,12 @@ if st.session_state["completed"]:
                     common_details = common_questions()
                     st.session_state["temp_details"].update(common_details)
 
-                    if common_details.get("type_container") in ["Reefer 20'", "Reefer 40'"]:
+                    if common_details.get("type_container") in ["Reefer 40'"]:
                         st.markdown("**-----Refrigerated Cargo Details-----**")
                         refrigerated_cargo = handle_refrigerated_cargo(common_details["type_container"], incoterm)
                         st.session_state["temp_details"].update(refrigerated_cargo)
                 elif modality == "LCL":
-                    lcl_details = lcl_questions()
+                    lcl_details = lcl_questions(transport_type)
                     st.session_state["temp_details"].update(lcl_details)
 
             with st.expander("**Final Details**"):
@@ -239,7 +250,7 @@ if st.session_state["completed"]:
                 st.button("Back", on_click=go_back, key="back_service") 
             with col2:
                 st.button("Add Service", key="add_service", on_click=handle_add_service)
-            
+
     #-----------------------------------------GROUND TRANSPORTATION-----------------------------------------
         elif service == "Ground Transportation": 
             st.subheader("Ground Transportation")
@@ -288,6 +299,7 @@ if st.session_state["completed"]:
                 service = services[service_index]
                 st.session_state["temp_details"] = service["details"].copy()
                 st.session_state["temp_details"]["service"] = service["service"]
+                #save_services(updated_services)
                 change_page("client_data")
 
             def handle_delete(service_index):
@@ -300,6 +312,8 @@ if st.session_state["completed"]:
                 ]
                 save_services(updated_services)
                 st.success(f"Service {service_index + 1} has been removed!")
+                if not st.session_state["services"]:
+                    change_page("select_sales_rep")
 
             def button(service):
                 if service:
@@ -307,9 +321,10 @@ if st.session_state["completed"]:
 
             for i, service in enumerate(services):
                 col1, col2, col3 = st.columns([0.8, 0.1, 0.1]) 
+                service_name = service.get("service", "Unknown Service")
 
                 with col1:
-                    st.write(f"{i + 1}. {service['service']}")
+                    st.write(f"{i + 1}. {service_name}")
                 with col2:
                     st.button(
                         f"✏️",
@@ -326,10 +341,9 @@ if st.session_state["completed"]:
             col1, col2 = st.columns([0.04, 0.1])
 
             with col1:
-                def handle_add_service():
+                def handle_another_service():
                     change_page("add_services")
-                
-                st.button("Add Another Service", on_click=handle_add_service)
+                st.button("Add Another Service", on_click=handle_another_service)
 
             with col2:
 
@@ -351,16 +365,12 @@ if st.session_state["completed"]:
                                 st.session_state["folder_id"] = folder_id
                                 st.session_state["folder_link"] = folder_link
                                 st.session_state["folder_request_id"] = request_id
-                            
+
                             folder_id = st.session_state.get("folder_id", "No folder created")
 
                             if not folder_id:
                                 st.error("Failed to create or retrieve folder. Aborting finalization.")
                                 return
-                            
-                            upload_all_files_to_google_drive(folder_id)
-                            
-                            clear_temp_directory()
 
                             st.session_state["end_time"] = datetime.now(colombia_timezone)
                             end_time = st.session_state["end_time"]
@@ -383,6 +393,7 @@ if st.session_state["completed"]:
                             customs_records = []
 
                             for service in services:
+                                transport_type = service.get("details", {}).get("transport_type", None)
                                 base_info = {
                                     "time": end_time_str,
                                     "request_id": f'=HYPERLINK("{folder_link}"; "{st.session_state["request_id"]}")',
@@ -399,7 +410,10 @@ if st.session_state["completed"]:
                                             f"Type: {pack['type_packaging']}, "
                                             f"Quantity={pack['quantity']}, "
                                             f"Weight={pack['weight_lcl']}KG, "
+                                            + (f"Kilovolume={pack.get('kilovolume', 0.0):.2f}KG, "
+                                            if transport_type and transport_type == "Air" else
                                             f"Volume={pack['volume']:.2f}CBM, "
+                                            ) +
                                             f"Dimensions={pack['length']}x{pack['width']}x{pack['height']}CM"
                                             for i, pack in enumerate(pallets_info)
                                         ]
@@ -458,11 +472,12 @@ if st.session_state["completed"]:
                                 save_to_google_sheets(st.session_state["df_customs"], "Customs", sheet_id)
 
                             del st.session_state["request_id"]
+                            upload_all_files_to_google_drive(folder_id)
+                            clear_temp_directory()
                             st.session_state["services"] = []
                             st.session_state["start_time"] = None
                             st.session_state["end_time"] = None
                             st.session_state["quotation_completed"] = False
-                            initialize_state()
                             st.session_state["page"] = "select_sales_rep"
 
                             st.success("Quotation completed!")
