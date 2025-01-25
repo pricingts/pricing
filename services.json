@@ -1,1 +1,160 @@
-[]
+[
+    {
+        "service": "International Freight",
+        "details": {
+            "routes": [
+                {
+                    "origin": "Andorra la Vella, Andorra",
+                    "destination": "La Massana, Andorra"
+                }
+            ],
+            "packages": [
+                {
+                    "type_packaging": "Pallet",
+                    "quantity": 10,
+                    "weight_lcl": 1000,
+                    "volume": 100000.0,
+                    "length": 0,
+                    "width": 0,
+                    "height": 0,
+                    "kilovolume": 0.0
+                }
+            ],
+            "service": "International Freight",
+            "transport_type": "Maritime",
+            "modality": "FCL",
+            "imo_cargo": false,
+            "un_code": null,
+            "msds_files": null,
+            "incoterm": "FOB",
+            "commodity": "tapas",
+            "hs_code": "1234",
+            "pickup_address": null,
+            "zip_code_origin": null,
+            "delivery_address": null,
+            "zip_code_destination": null,
+            "cargo_value": null,
+            "customs_origin": false,
+            "insurance_required": false,
+            "type_container": "20' Dry Standard",
+            "reinforced": true,
+            "suitable_food": true,
+            "positioning": "In yard",
+            "pickup_city": "Barranquilla",
+            "lcl_fcl_mode": false,
+            "final_comments": "",
+            "additional_documents_files": [],
+            "temperature_control": null,
+            "temperature": null,
+            "lcl_description": "",
+            "stackable": false
+        }
+    },
+    {
+        "service": "Ground Transportation",
+        "details": {
+            "service": "Ground Transportation",
+            "routes": [
+                {
+                    "origin": "Andorra la Vella, Andorra",
+                    "destination": "La Massana, Andorra"
+                }
+            ],
+            "packages": [],
+            "transport_type": "Maritime",
+            "modality": "FCL",
+            "imo_cargo": false,
+            "un_code": null,
+            "msds_files": null,
+            "incoterm": "FOB",
+            "commodity": "tapas",
+            "hs_code": "1234",
+            "pickup_address": "cll 98",
+            "zip_code_origin": "1234",
+            "delivery_address": "1234",
+            "zip_code_destination": "1234",
+            "cargo_value": null,
+            "customs_origin": false,
+            "insurance_required": false,
+            "type_container": "20' Dry Standard",
+            "reinforced": true,
+            "suitable_food": true,
+            "positioning": "In yard",
+            "pickup_city": "Barranquilla",
+            "lcl_fcl_mode": false,
+            "final_comments": "",
+            "additional_documents_files": [],
+            "temperature_control": null,
+            "temperature": null,
+            "lcl_description": "",
+            "stackable": false,
+            "country_origin": "United arab emirates",
+            "city_origin": "Ajman",
+            "country_destination": "Anguilla",
+            "city_destination": "Sombrero",
+            "ground_service": "Drayage 20 STD"
+        }
+    },
+    {
+        "service": "Customs Brokerage",
+        "details": {
+            "service": "Customs Brokerage",
+            "routes": [
+                {
+                    "origin": "Andorra la Vella, Andorra",
+                    "destination": "La Massana, Andorra"
+                }
+            ],
+            "packages": [
+                {
+                    "type_packaging": "Pallet",
+                    "quantity": 10,
+                    "weight_lcl": 1000,
+                    "volume": 100000.0,
+                    "length": 0,
+                    "width": 0,
+                    "height": 0,
+                    "kilovolume": 0.0
+                }
+            ],
+            "transport_type": "Maritime",
+            "modality": "FCL",
+            "imo_cargo": false,
+            "un_code": null,
+            "msds_files": null,
+            "incoterm": "FOB",
+            "commodity": "tapas",
+            "hs_code": "1234",
+            "pickup_address": null,
+            "zip_code_origin": null,
+            "delivery_address": null,
+            "zip_code_destination": null,
+            "cargo_value": null,
+            "customs_origin": false,
+            "insurance_required": false,
+            "type_container": "20' Dry Standard",
+            "reinforced": true,
+            "suitable_food": true,
+            "positioning": "In yard",
+            "pickup_city": "Barranquilla",
+            "lcl_fcl_mode": false,
+            "final_comments": "",
+            "additional_documents_files": [],
+            "temperature_control": null,
+            "temperature": null,
+            "lcl_description": "",
+            "stackable": false,
+            "country_origin": "United arab emirates",
+            "city_origin": "Ajman",
+            "country_destination": "Anguilla",
+            "city_destination": "Sombrero",
+            "ground_service": "Drayage 20 STD",
+            "commercial_invoice_files": [],
+            "packing_list_files": [],
+            "weight": null,
+            "freight_cost": 0,
+            "insurance_cost": 0,
+            "origin_certificate_files": []
+        }
+    }
+]
