@@ -36,10 +36,16 @@ colombia_timezone = pytz.timezone('America/Bogota')
 
 
 #--------------------------------------UTILITY FUNCTIONS--------------------------------
+@st.cache_data(ttl=3600)
 def clear_temp_directory():
     for root, _, files in os.walk(TEMP_DIR):
         for file_name in files:
             os.remove(os.path.join(root, file_name))
+
+@st.cache_data(ttl=3600)
+def load_csv(file):
+    df = pd.read_csv(file)
+    return df
 
 def initialize_state():
     default_values = {
