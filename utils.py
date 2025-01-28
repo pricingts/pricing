@@ -59,10 +59,7 @@ drive_creds = Credentials.from_service_account_info(
 drive_service = build('drive', 'v3', credentials=drive_creds)
 client_gcp = gspread.authorize(sheets_creds)
 
-@st.cache_data(ttl=3600)
-def load_csv(file):
-    df = pd.read_csv(file)
-    return df
+
 
 
 def save_file_locally(file, temp_dir=TEMP_DIR):
