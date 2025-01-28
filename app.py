@@ -52,7 +52,7 @@ def initialize_state():
         "start_time": datetime.now(colombia_timezone),
         "end_time": None,
         "uploaded_files": {},
-        "temp_details": {"routes": [], "packages": []},
+        "temp_details": {"routes_maritime": [], "packages": [], "routes_air": []},
         "generated_ids": set(),
         "request_id": None,
         "final_comments": "",
@@ -81,6 +81,9 @@ def initialize_state():
             st.session_state["cities_csv"] = load_csv("cities_world.csv")
         except Exception as e:
             st.error("Error loading CSV data. Please check the file path or format.")
+
+    if "uploaded_files" not in st.session_state:
+        st.session_state.uploaded_files = []
 
 def generate_request_id():
     if "generated_ids" not in st.session_state:
@@ -122,7 +125,7 @@ if st.session_state["completed"]:
     if st.session_state["page"] == "select_sales_rep":
 
         sales_rep = st.selectbox(
-            "Please select a Sales Representative",
+            "Please select a Sales Representative*",
             ["-- Sales Representative --", "Pedro Bruges", "Andrés Consuegra", "Ivan Zuluaga", "Sharon Zuñiga",
             "Johnny Farah", "Felipe Hoyos", "Jorge Sánchez",
             "Irina Paternina", "Stephanie Bruges"],
@@ -144,7 +147,7 @@ if st.session_state["completed"]:
         sales_rep = st.session_state.get("sales_rep", "-- Sales Representative --")
         st.subheader(f"Hello, {sales_rep}!")
 
-        client = st.text_input("Who is your client?", key="client_input")
+        client = st.text_input("Who is your client?*", key="client_input")
 
         def handle_next_client():
             if not client or client.strip() == "":
@@ -163,7 +166,7 @@ if st.session_state["completed"]:
     elif st.session_state["page"] == "add_services":
 
         service = st.selectbox(
-                    "What service would you like to quote?",
+                    "What service would you like to quote?*",
                     ["-- Services --", "International Freight", "Ground Transportation", "Customs Brokerage"],
                     key="service"
         )
@@ -192,7 +195,7 @@ if st.session_state["completed"]:
         if service == "International Freight":
             st.subheader("International Freight")
 
-            transport_type = st.selectbox("Transport Type", ["Maritime", "Air"], key="transport_type")
+            transport_type = st.selectbox("Transport Type*", ["Maritime", "Air"], key="transport_type")
             st.session_state["temp_details"]["transport_type"] = transport_type
 
             if transport_type == "Air":
@@ -200,22 +203,29 @@ if st.session_state["completed"]:
             else:
                 modality_options = ["FCL", "LCL"]
 
-            modality = st.selectbox("Modality", modality_options, key="modality")
+            modality = st.selectbox("Modality*", modality_options, key="modality")
             st.session_state["temp_details"]["modality"] = modality
 
-            with st.expander("**Cargo Details**"):
+            if "cargo_details_expander" not in st.session_state:
+                st.session_state["cargo_details_expander"] = True
+            if "transportation_details_expander" not in st.session_state:
+                st.session_state["transportation_details_expander"] = True
+            if "final_details_expander" not in st.session_state:
+                st.session_state["final_details_expander"] = True
+
+            with st.expander("**Cargo Details**", expanded=st.session_state["cargo_details_expander"]):
 
                 incoterms_op = {
-                    "FCL": ["FOB", "FCA", "CIF", "CFR", "EXW", "DDP", "DAP"],
-                    "LCL": ["FOB", "FCA", "EXW", "DDP", "DAP", "CIP", "CPT"]
+                    "Maritime": ["FOB", "FCA", "CIF", "CFR", "EXW", "DDP", "DAP"],
+                    "Air": ["FOB", "DDP", "DAP", "CIP", "CPT", "EXW"]
                 }
 
-                incoterm_options = incoterms_op.get(modality, [])
+                incoterm_options = incoterms_op.get(transport_type, [])
 
-                incoterm = st.selectbox("Select Incoterm", incoterm_options, key="incoterm")
+                incoterm = st.selectbox("Select Incoterm*", incoterm_options, key="incoterm")
 
                 if incoterm:
-                    incoterm_result = questions_by_incoterm(incoterm, st.session_state["temp_details"], service)
+                    incoterm_result = questions_by_incoterm(incoterm, st.session_state["temp_details"], service, transport_type)
 
                     if isinstance(incoterm_result, tuple):
                         incoterm_details, routes = incoterm_result
@@ -228,7 +238,7 @@ if st.session_state["completed"]:
                     if routes:
                         st.session_state["routes"] = routes
 
-            with st.expander("**Transportation Details**"):
+            with st.expander("**Transportation Details**", expanded=st.session_state["transportation_details_expander"]):
                 if modality == "FCL":
                     common_details = common_questions()
                     st.session_state["temp_details"].update(common_details)
@@ -237,11 +247,11 @@ if st.session_state["completed"]:
                         st.markdown("**-----Refrigerated Cargo Details-----**")
                         refrigerated_cargo = handle_refrigerated_cargo(common_details["type_container"], incoterm)
                         st.session_state["temp_details"].update(refrigerated_cargo)
-                elif modality == "LCL":
+                if modality == "LCL":
                     lcl_details = lcl_questions(transport_type)
                     st.session_state["temp_details"].update(lcl_details)
 
-            with st.expander("**Final Details**"):
+            with st.expander("**Final Details**", expanded=st.session_state["final_details_expander"]):
                 final_details = final_questions()
                 st.session_state["temp_details"].update(final_details)
             
@@ -255,12 +265,17 @@ if st.session_state["completed"]:
         elif service == "Ground Transportation": 
             st.subheader("Ground Transportation")
 
-            with st.expander("**Cargo Details**"):
+            if "cargo_details_expander" not in st.session_state:
+                st.session_state["cargo_details_expander"] = True
+            if "final_details_expander" not in st.session_state:
+                st.session_state["final_details_expander"] = True
+
+            with st.expander("**Cargo Details**", expanded=st.session_state["cargo_details_expander"]):
                 lcl_details = ground_transport()
                 st.session_state["temp_details"].update(lcl_details)
             
             temp_details = st.session_state.get("temp_details", {})
-            with st.expander("**Final Details**"):
+            with st.expander("**Final Details**", expanded=st.session_state["final_details_expander"]):
                 final_details = final_questions()
                 st.session_state["temp_details"].update(final_details)
 
@@ -273,12 +288,17 @@ if st.session_state["completed"]:
         elif service == "Customs Brokerage":
             st.subheader("Customs Brokerage")
 
-            with st.expander("**Customs Details**"):
+            if "customs_details_expander" not in st.session_state:
+                st.session_state["customs_details_expander"] = True
+            if "final_details_expander" not in st.session_state:
+                st.session_state["final_details_expander"] = True
+
+            with st.expander("**Customs Details**", expanded=st.session_state["customs_details_expander"]):
                 customs_details = customs_questions(service)
                 st.session_state["temp_details"].update(customs_details)
             
             temp_details = st.session_state.get("temp_details", {})
-            with st.expander("**Final Details**"):
+            with st.expander("**Final Details**", expanded=st.session_state["final_details_expander"]):
                 final_details = final_questions()
                 st.session_state["temp_details"].update(final_details)
             
@@ -433,12 +453,18 @@ if st.session_state["completed"]:
                                         if routes
                                         else "No routes provided"
                                     )
+                                    
                                     service["details"]["routes_info"] = routes_str
                                     del service["details"]["routes"]
                                 else:
                                     service["details"]["routes_info"] = "Not applicable"
 
-                                full_record = {**base_info, **service["details"]}
+                                converted_details = {
+                                    key: ("Sí" if value is True else "No" if value is False else value)
+                                    for key, value in service["details"].items()
+                                }
+
+                                full_record = {**base_info, **converted_details}
 
                                 if service["service"] == "International Freight":
                                     freight_records.append(full_record)
