@@ -58,7 +58,7 @@ def initialize_state():
         "start_time": datetime.now(colombia_timezone),
         "end_time": None,
         "uploaded_files": {},
-        "temp_details": {"routes_maritime": [], "packages": [], "routes_air": []},
+        "temp_details": {"routes": [], "packages": []},
         "generated_ids": set(),
         "request_id": None,
         "final_comments": "",
@@ -76,13 +76,13 @@ def initialize_state():
     reset_json()
     clear_temp_directory()
 
-    if st.session_state["ports_csv"] is None:
+    if st.session_state["ports_csv"] not in st.session_state:
         try:
             st.session_state["ports_csv"] = load_csv("ports_world.csv")
         except Exception as e:
             st.error("Error loading CSV data. Please check the file path or format.")
 
-    if st.session_state["cities_csv"] is None:
+    if st.session_state["cities_csv"] not in st.session_state:
         try:
             st.session_state["cities_csv"] = load_csv("cities_world.csv")
         except Exception as e:
