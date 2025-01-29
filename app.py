@@ -512,8 +512,10 @@ if st.session_state["completed"]:
                             st.session_state["end_time"] = None
                             st.session_state["quotation_completed"] = False
                             st.session_state["page"] = "select_sales_rep"
-
+                            st.cache_data.clear()
+                            st.cache_resource.clear()
                             st.success("Quotation completed!")
+
                             change_page("select_sales_rep")
 
                         except Exception as e:
