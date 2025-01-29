@@ -352,61 +352,79 @@ def imo_questions():
 #------------------------ ROUTES MARITIME --------------------------
 def initialize_routes():
     if "routes" not in st.session_state:
-        st.session_state["routes"] = [{"origin": "", "destination": ""}]
+        st.session_state["routes"] = [{"country_origin": "", "port_origin": "", "country_destination": "", "port_destination": ""}]
 
 def add_route():
-    st.session_state["routes"].append({"origin": "", "destination": ""})
+    st.session_state["routes"].append({"country_origin": "", "port_origin": "", "country_destination": "", "port_destination": ""})
+
+def handle_remove_route(index):
+    if 0 <= index < len(st.session_state["routes"]):
+        del st.session_state["routes"][index]
 
 def handle_routes(transport_type):
     initialize_routes()
-
-    # Cargar las opciones según el tipo de transporte
+    
     if transport_type == "Air":
         csv_data = st.session_state.get("cities_csv", {})
-        route_options = csv_data.get("country_city", pd.Series()).dropna().astype(str).tolist()
+        route_options = csv_data.get("Country", pd.Series()).dropna().astype(str).unique().tolist()
     elif transport_type == "Maritime":
         csv_data = st.session_state.get("ports_csv", {})
-        route_options = csv_data.get("port_country", pd.Series()).dropna().astype(str).tolist()
+        route_options = csv_data.get("country", pd.Series()).dropna().astype(str).unique().tolist()
     else:
-        csv_data = []
+        route_options = []
     
-    def handle_remove_route(index):
-        if 0 <= index < len(st.session_state["routes"]):
-            del st.session_state["routes"][index]
+    for i in range(len(st.session_state["routes"])):
+        route = st.session_state["routes"][i]
+        st.markdown(f"### Route {i+1}")
+        
+        cols = st.columns([0.45, 0.45, 0.1])
 
-    def handle_add_route():
-        add_route()
-
-    # 🔹 Un solo campo de búsqueda para todas las rutas
-    search_term = st.text_input("🔍 Search Origin/Destination", "")
-
-    # 🔹 Filtrar opciones basadas en la búsqueda (máximo 50 resultados)
-    filtered_options = [opt for opt in route_options if search_term.lower() in opt.lower()][:50]
-
-    # 🔹 Crear las columnas (Origen | Destino | Botón de eliminar)
-    cols = st.columns([0.45, 0.45, 0.1])  
-
-    for i, route in enumerate(st.session_state["routes"]):
-        with cols[0]:
-            # ✅ Mantener la opción seleccionada si no está en los resultados filtrados
-            current_origin = route["origin"] if route["origin"] in route_options else ""
-            route["origin"] = st.selectbox(
-                f"Origin {i + 1}*",
-                options=[""] + filtered_options + ([current_origin] if current_origin and current_origin not in filtered_options else []),
-                key=f"origin_{i}",
-                index=(filtered_options + [current_origin]).index(current_origin) + 1 if current_origin else 0,
-            )
-
-        with cols[1]:
-            # ✅ Mantener la opción seleccionada si no está en los resultados filtrados
-            current_destination = route["destination"] if route["destination"] in route_options else ""
-            route["destination"] = st.selectbox(
-                f"Destination {i + 1}*",
-                options=[""] + filtered_options + ([current_destination] if current_destination and current_destination not in filtered_options else []),
-                key=f"destination_{i}",
-                index=(filtered_options + [current_destination]).index(current_destination) + 1 if current_destination else 0,
-            )
-
+        with cols[0]: 
+            col1, col2 = st.columns(2)
+            with col1:
+                country_origin = st.selectbox(
+                    "Country of Origin*",
+                    options=[""] + route_options,
+                    key=f"country_origin_{i}",
+                    index=(route_options.index(route["country_origin"]) + 1) if route["country_origin"] in route_options else 0,
+                )
+                st.session_state["routes"][i]["country_origin"] = country_origin
+            
+            with col2:
+                filtered_ports = csv_data[csv_data["Country"] == country_origin]["City"].dropna().unique().tolist() if transport_type == "Air" and country_origin else []
+                if transport_type == "Maritime" and country_origin:
+                    filtered_ports = csv_data[csv_data["country"] == country_origin]["port name"].dropna().unique().tolist()
+                port_origin = st.selectbox(
+                    "Port of Origin*",
+                    options=[""] + filtered_ports,
+                    key=f"port_origin_{i}",
+                    index=(filtered_ports.index(route["port_origin"]) + 1) if route["port_origin"] in filtered_ports else 0,
+                )
+                st.session_state["routes"][i]["port_origin"] = port_origin
+        
+        with cols[1]: 
+            col1, col2 = st.columns(2)
+            with col1:
+                country_destination = st.selectbox(
+                    "Country of Destination*",
+                    options=[""] + route_options,
+                    key=f"country_destination_{i}",
+                    index=(route_options.index(route["country_destination"]) + 1) if route["country_destination"] in route_options else 0,
+                )
+                st.session_state["routes"][i]["country_destination"] = country_destination
+            
+            with col2:
+                filtered_ports = csv_data[csv_data["Country"] == country_destination]["City"].dropna().unique().tolist() if transport_type == "Air" and country_destination else []
+                if transport_type == "Maritime" and country_destination:
+                    filtered_ports = csv_data[csv_data["country"] == country_destination]["port name"].dropna().unique().tolist()
+                port_destination = st.selectbox(
+                    "Port of Destination*",
+                    options=[""] + filtered_ports,
+                    key=f"port_destination_{i}",
+                    index=(filtered_ports.index(route["port_destination"]) + 1) if route["port_destination"] in filtered_ports else 0,
+                )
+                st.session_state["routes"][i]["port_destination"] = port_destination
+            
         with cols[2]:
             st.write("")
             st.write("")
@@ -417,8 +435,7 @@ def handle_routes(transport_type):
                 use_container_width=True
             )
 
-    # Botón para agregar más rutas
-    st.button("➕ Add another route", on_click=handle_add_route)
+    st.button("➕ Add another route", on_click=add_route)
 
 def questions_by_incoterm(incoterm, details, service, transport_type):
 
@@ -429,7 +446,7 @@ def questions_by_incoterm(incoterm, details, service, transport_type):
     handle_routes(transport_type)
     routes = st.session_state.get("routes", [])
     routes_formatted = [
-        {"origin": route["origin"], "destination": route["destination"]}
+        {"country_origin": route["country_origin"], "port_origin":route["port_origin"],"country_destination": route["country_destination"], "port_destination":route["port_destination"]}
         for route in routes ]
 
     commodity = st.text_input("Commodity*", key="commodity", value=details.get("commodity", ""))
@@ -774,10 +791,14 @@ def validate_service_details(temp_details):
             errors.append("At least one route is required.")
         else:
             for idx, route in enumerate(routes):
-                if not route.get("origin"):
-                    errors.append(f"The origin of route {idx + 1} is required.")
-                if not route.get("destination"):
-                    errors.append(f"The destination of route {idx + 1} is required.")
+                if not route.get("country_origin"):
+                    errors.append(f"The origin country of route {idx + 1} is required.")
+                if not route.get("port_origin"):
+                    errors.append(f"The origin port of route {idx + 1} is required.")
+                if not route.get("country_destination"):
+                    errors.append(f"The destination country of route {idx + 1} is required.")
+                if not route.get("port_destination"):
+                    errors.append(f"The destination port of route {idx + 1} is required.")
 
         if modality == "FCL":
             positioning = temp_details.get("positioning", "")

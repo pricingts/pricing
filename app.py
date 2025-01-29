@@ -78,7 +78,7 @@ def initialize_state():
 
     if st.session_state["ports_csv"] not in st.session_state:
         try:
-            st.session_state["ports_csv"] = load_csv("ports_world.csv")
+            st.session_state["ports_csv"] = load_csv("output_port_world.csv")
         except Exception as e:
             st.error("Error loading CSV data. Please check the file path or format.")
 
@@ -452,7 +452,7 @@ if st.session_state["completed"]:
                                     routes_str = (
                                         "\n".join(
                                             [
-                                                f"Route {i + 1}: {route['origin']} - {route['destination']}"
+                                                f"Route {i + 1}: {route['country_origin']}, {route['port_origin']} - {route['country_destination']}, {route['port_destination']} "
                                                 for i, route in enumerate(routes)
                                             ]
                                         )
