@@ -59,7 +59,10 @@ drive_creds = Credentials.from_service_account_info(
 drive_service = build('drive', 'v3', credentials=drive_creds)
 client_gcp = gspread.authorize(sheets_creds)
 
-
+@st.cache_data(ttl=3600)
+def load_csv(file):
+    df = pd.read_csv(file)
+    return df
 
 
 def save_file_locally(file, temp_dir=TEMP_DIR):
@@ -347,6 +350,16 @@ def imo_questions():
     }
 
 #------------------------ ROUTES MARITIME --------------------------
+@st.cache_data
+def load_route_options(transport_type, csv_data):
+    # Cargar opciones según el tipo de transporte
+    if transport_type == "Air":
+        return csv_data.get("country_city", []).tolist()
+    elif transport_type == "Maritime":
+        return csv_data.get("port_country", []).tolist()
+    else:
+        return []
+
 def initialize_routes():
     if "routes" not in st.session_state:
         st.session_state["routes"] = [{"origin": "", "destination": ""}]
@@ -357,15 +370,18 @@ def add_route():
 def handle_routes(transport_type):
     initialize_routes()
 
+    # Obtener los datos en caché
     if transport_type == "Air":
         csv_data = st.session_state.get("cities_csv", {})
-        route_options = csv_data.get("country_city", []).tolist() 
     elif transport_type == "Maritime":
         csv_data = st.session_state.get("ports_csv", {})
-        route_options = csv_data.get("port_country", []).tolist() 
     else:
         csv_data = {}
-        route_options = []
+
+    route_options = load_route_options(transport_type, csv_data)
+
+    # Convertir a strings y evitar errores
+    route_options = [str(option) if option is not None else "" for option in route_options]
 
     def handle_remove_route(index):
         if 0 <= index < len(st.session_state["routes"]):
@@ -377,32 +393,38 @@ def handle_routes(transport_type):
     cols = st.columns([0.45, 0.45, 0.1]) 
 
     for i, route in enumerate(st.session_state["routes"]):
-
         with cols[0]:
+            # Selectbox para Origin sin filtrado
             route["origin"] = st.selectbox(
                 f"Origin {i + 1}*",
-                options=[""] + route_options,
+                options=[""] + route_options,  # Mostrar todas las opciones
                 key=f"origin_{i}",
-                index=route_options.index(route["origin"]) + 1
-                if route["origin"] in route_options else 0,
+                format_func=lambda x: x if x else "Select origin",
             )
+
         with cols[1]:
+            # Selectbox para Destination sin filtrado
             route["destination"] = st.selectbox(
                 f"Destination {i + 1}*",
-                options=[""] + route_options,
+                options=[""] + route_options,  # Mostrar todas las opciones
                 key=f"destination_{i}",
-                index=route_options.index(route["destination"]) + 1
-                if route["destination"] in route_options else 0,
+                format_func=lambda x: x if x else "Select destination",
             )
 
         with cols[2]:
             st.write("")
             st.write("")
             st.button(
-                "**X**", on_click=lambda i=i: handle_remove_route(i), key=f"remove_route_{i}", use_container_width=True
+                "**X**",
+                on_click=handle_remove_route,
+                args=[i],
+                key=f"remove_route_{i}",
+                use_container_width=True,
             )
 
-    st.button("Add other route", on_click=handle_add_route)
+    # Botón para agregar una nueva ruta
+    st.button("➕ Add other route", on_click=handle_add_route)
+
 
 
 def questions_by_incoterm(incoterm, details, service, transport_type):
