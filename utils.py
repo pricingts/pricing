@@ -350,16 +350,6 @@ def imo_questions():
     }
 
 #------------------------ ROUTES MARITIME --------------------------
-@st.cache_data
-def load_route_options(transport_type, csv_data):
-    # Cargar opciones según el tipo de transporte
-    if transport_type == "Air":
-        return csv_data.get("country_city", []).tolist()
-    elif transport_type == "Maritime":
-        return csv_data.get("port_country", []).tolist()
-    else:
-        return []
-
 def initialize_routes():
     if "routes" not in st.session_state:
         st.session_state["routes"] = [{"origin": "", "destination": ""}]
@@ -370,19 +360,16 @@ def add_route():
 def handle_routes(transport_type):
     initialize_routes()
 
-    # Obtener los datos en caché
+    # Cargar las opciones según el tipo de transporte
     if transport_type == "Air":
         csv_data = st.session_state.get("cities_csv", {})
+        route_options = csv_data.get("country_city", pd.Series()).dropna().astype(str).tolist()
     elif transport_type == "Maritime":
         csv_data = st.session_state.get("ports_csv", {})
+        route_options = csv_data.get("port_country", pd.Series()).dropna().astype(str).tolist()
     else:
-        csv_data = {}
-
-    route_options = load_route_options(transport_type, csv_data)
-
-    # Convertir a strings y evitar errores
-    route_options = [str(option) if option is not None else "" for option in route_options]
-
+        csv_data = []
+    
     def handle_remove_route(index):
         if 0 <= index < len(st.session_state["routes"]):
             del st.session_state["routes"][index]
@@ -390,42 +377,48 @@ def handle_routes(transport_type):
     def handle_add_route():
         add_route()
 
-    cols = st.columns([0.45, 0.45, 0.1]) 
+    # 🔹 Un solo campo de búsqueda para todas las rutas
+    search_term = st.text_input("🔍 Search Origin/Destination", "")
+
+    # 🔹 Filtrar opciones basadas en la búsqueda (máximo 50 resultados)
+    filtered_options = [opt for opt in route_options if search_term.lower() in opt.lower()][:50]
+
+    # 🔹 Crear las columnas (Origen | Destino | Botón de eliminar)
+    cols = st.columns([0.45, 0.45, 0.1])  
 
     for i, route in enumerate(st.session_state["routes"]):
         with cols[0]:
-            # Selectbox para Origin sin filtrado
+            # ✅ Mantener la opción seleccionada si no está en los resultados filtrados
+            current_origin = route["origin"] if route["origin"] in route_options else ""
             route["origin"] = st.selectbox(
                 f"Origin {i + 1}*",
-                options=[""] + route_options,  # Mostrar todas las opciones
+                options=[""] + filtered_options + ([current_origin] if current_origin and current_origin not in filtered_options else []),
                 key=f"origin_{i}",
-                format_func=lambda x: x if x else "Select origin",
+                index=(filtered_options + [current_origin]).index(current_origin) + 1 if current_origin else 0,
             )
 
         with cols[1]:
-            # Selectbox para Destination sin filtrado
+            # ✅ Mantener la opción seleccionada si no está en los resultados filtrados
+            current_destination = route["destination"] if route["destination"] in route_options else ""
             route["destination"] = st.selectbox(
                 f"Destination {i + 1}*",
-                options=[""] + route_options,  # Mostrar todas las opciones
+                options=[""] + filtered_options + ([current_destination] if current_destination and current_destination not in filtered_options else []),
                 key=f"destination_{i}",
-                format_func=lambda x: x if x else "Select destination",
+                index=(filtered_options + [current_destination]).index(current_destination) + 1 if current_destination else 0,
             )
 
         with cols[2]:
             st.write("")
             st.write("")
             st.button(
-                "**X**",
-                on_click=handle_remove_route,
-                args=[i],
-                key=f"remove_route_{i}",
-                use_container_width=True,
+                "**X**", 
+                on_click=lambda i=i: handle_remove_route(i), 
+                key=f"remove_route_{i}", 
+                use_container_width=True
             )
 
-    # Botón para agregar una nueva ruta
-    st.button("➕ Add other route", on_click=handle_add_route)
-
-
+    # Botón para agregar más rutas
+    st.button("➕ Add another route", on_click=handle_add_route)
 
 def questions_by_incoterm(incoterm, details, service, transport_type):
 
@@ -938,6 +931,7 @@ def handle_add_service():
 
     services = st.session_state.get("services", [])
     edit_index = st.session_state.get("edit_index")
+    temp_details = clean_service_data(temp_details)
 
     if edit_index is not None:
         if 0 <= edit_index < len(services):
@@ -1230,3 +1224,20 @@ def prefill_temp_details():
             temp_details[key] = value
 
     st.session_state["temp_details"] = temp_details
+
+def clean_service_data(service_data):
+    if service_data["service"] == "International Freight":
+        if service_data["modality"] == "LCL":
+            keys_to_remove = [
+                "positioning", "pickup_city", "lcl_fcl_mode", "type_container",
+                "reinforced", "suitable_food", "isotank", "flexitank"
+            ]
+        elif service_data["modality"] == "FCL":
+            keys_to_remove = ["lcl_description", "stackable", "packages"]
+        else:
+            keys_to_remove = []
+
+        for key in keys_to_remove:
+            service_data.pop(key, None)
+    
+    return service_data
