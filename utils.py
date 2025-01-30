@@ -61,12 +61,17 @@ client_gcp = gspread.authorize(sheets_creds)
 
 def save_file_locally(file, temp_dir=TEMP_DIR):
     try:
+        os.makedirs(temp_dir, exist_ok=True)
+
         temp_file_path = os.path.join(temp_dir, file.name)
+
         with open(temp_file_path, "wb") as temp_file:
-            temp_file.write(file.read())
+            temp_file.write(file.getbuffer())  
+
         return temp_file_path
+
     except Exception as e:
-        st.error(f"Failed to save file locally: {e}")
+        st.error(f"⚠️ Error al guardar el archivo: {e}")
         return None
 
 def folder(request_id):
@@ -222,17 +227,17 @@ def common_questions():
     with col4:
         flexitank = st.checkbox("Flexitank", key="flexitank", value=temp_details.get("flexitank", False))
 
-    msds_files = []
+    msds_files_tank = []
     ts_files = []
     ss_files = []
 
     if isotank or flexitank:
         msds_files = temp_details.get("msds_files", "")
         if not msds_files:
-            msds = st.file_uploader("Attach MSDS*", accept_multiple_files=True, key="msds")
-            msds_files = []
+            msds = st.file_uploader("Attach MSDS*", accept_multiple_files=True, key="msds_tank")
+            msds_file_tank = []
             if msds:
-                msds_files = [save_file_locally(file) for file in msds]
+                msds_files_tank = [save_file_locally(file) for file in msds]
 
         technical_sheets = st.file_uploader("Attach Technical Sheets*", accept_multiple_files=True, key="commercial_invoices")
         ts_files = []
@@ -265,7 +270,7 @@ def common_questions():
         "flexitank": flexitank,
         "ts_files": ts_files,
         "ss_files": ss_files,
-        "msds_files": msds_files,
+        "msds_files_tank": msds_files_tank,
         "positioning": positioning,
         "pickup_city": pickup_city,
         "lcl_fcl_mode": lcl_fcl_mode
@@ -320,7 +325,8 @@ def imo_questions():
         key="imo_cargo", 
         value=temp_details.get("imo_cargo", False)
     )
-    un_code, msds_files, imo_type = None, None, None
+    un_code, imo_type = None, None
+    msds_files = []
 
     if imo_cargo:
         col1, col2 = st.columns(2)
@@ -328,12 +334,19 @@ def imo_questions():
             imo_type = st.text_input("IMO type*", key="imo_type", value=temp_details.get("imo_type", ""))
         with col2:
             un_code = st.text_input("UN Code*", key="un_code", value=temp_details.get("un_code", ""))
-        msds = st.file_uploader("Attach MSDS*", accept_multiple_files=True, key="msds_tank")
+        msds = st.file_uploader("Attach MSDS*", accept_multiple_files=True, key="msds")
 
-        msds_files = []
-        
-        if msds:
-            msds_files = [save_file_locally(file) for file in msds]
+        for file in msds:
+                file_path = save_file_locally(file)
+                if file_path:
+                    msds_files.append(file_path)
+
+        st.session_state["temp_details"] = {
+            "imo_cargo": imo_cargo,
+            "imo_type": imo_type,
+            "un_code": un_code,
+            "msds_files": msds_files
+        }
 
     return {
         "imo_cargo": imo_cargo,
@@ -764,7 +777,8 @@ def validate_service_details(temp_details):
     if imo:
         imo_type = temp_details.get("imo_type", "")
         un_code = temp_details.get("un_code", "")
-        msds_files = temp_details.get("msds_files", "")
+        msds_files = temp_details.get("msds_files", [])
+        print(msds_files)
         if not msds_files:
             errors.append("MSDS is required.")
         if not imo_type:
