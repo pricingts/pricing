@@ -59,14 +59,7 @@ drive_creds = Credentials.from_service_account_info(
 drive_service = build('drive', 'v3', credentials=drive_creds)
 client_gcp = gspread.authorize(sheets_creds)
 
-@st.cache_data(ttl=3600)
-def load_csv(file):
-    df = pd.read_csv(file)
-    return df
-
-
 def save_file_locally(file, temp_dir=TEMP_DIR):
-    """Guarda un archivo subido en el directorio temporal."""
     try:
         temp_file_path = os.path.join(temp_dir, file.name)
         with open(temp_file_path, "wb") as temp_file:
@@ -1124,17 +1117,6 @@ def reset_json():
 
 if not os.path.exists(TEMP_DIR):
     os.makedirs(TEMP_DIR)
-
-def save_file_locally(file, temp_dir=TEMP_DIR):
-    try:
-        temp_file_path = os.path.join(temp_dir, file.name)
-        with open(temp_file_path, "wb") as temp_file:
-            temp_file.write(file.read())
-        return temp_file_path
-    except Exception as e:
-        st.error(f"Failed to save file locally: {e}")
-        return None
-
 
 def handle_file_uploads(file_uploader_key, label="Attach Files*", temp_dir=TEMP_DIR):
     os.makedirs(temp_dir, exist_ok=True)

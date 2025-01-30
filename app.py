@@ -1,3 +1,6 @@
+for var in list(globals().keys()):
+        del globals()[var]
+
 import streamlit as st
 import pandas as pd
 from google.oauth2.service_account import Credentials
@@ -90,6 +93,9 @@ def initialize_state():
 
     if "uploaded_files" not in st.session_state:
         st.session_state.uploaded_files = []
+    
+    if "submitted" not in st.session_state:
+        st.session_state["submitted"] = False
 
 def generate_request_id():
     if "generated_ids" not in st.session_state:
@@ -382,6 +388,9 @@ if st.session_state["completed"]:
                     st.stop() 
 
                 def handle_finalize_quotation():
+                    if st.session_state["submitted"]:
+                        st.warning("This quotation has already been submitted.")
+                        return
                     services = load_services()
 
                     if services:
@@ -503,12 +512,12 @@ if st.session_state["completed"]:
                                 )
                                 save_to_google_sheets(st.session_state["df_customs"], "Customs", sheet_id)
 
+                            st.session_state["submitted"] = True
+
                             del st.session_state["request_id"]
                             upload_all_files_to_google_drive(folder_id)
                             clear_temp_directory()
                             reset_json()
-                            st.cache_data.clear()
-                            st.cache_resource.clear()
                             st.session_state["services"] = []
                             st.session_state["start_time"] = None
                             st.session_state["end_time"] = None
@@ -524,4 +533,6 @@ if st.session_state["completed"]:
                     else:
                         st.warning("No services have been added to finalize the quotation.")
 
-                st.button("Finalize Quotation", on_click=handle_finalize_quotation)
+                st.button("Finalize Quotation", on_click=handle_finalize_quotation, disabled=st.session_state["submitted"])
+
+            #globals().clear(); locals().clear()
