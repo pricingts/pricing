@@ -53,12 +53,12 @@ def initialize_state():
         "sales_rep": None,
         "services": [],
         "client": None,
-        "client_role": None,
+        "client_reference": None,
         "completed": True,
         "start_time": datetime.now(colombia_timezone),
         "end_time": None,
         "uploaded_files": {},
-        "temp_details": {"routes": [], "packages": []},
+        "temp_details": {"routes": [], "packages": [], "dimensions_flatrack": []},
         "generated_ids": set(),
         "request_id": None,
         "final_comments": "",
@@ -157,12 +157,14 @@ if st.session_state["completed"]:
         st.subheader(f"Hello, {sales_rep}!")
 
         client = st.text_input("Who is your client?*", key="client_input")
+        reference = st.text_input("Client reference", key="reference")
 
         def handle_next_client():
             if not client or client.strip() == "":
                 st.warning("Please enter a valid client name before proceeding.")
             else:
                 st.session_state["client"] = client
+                st.session_state["client_reference"] = reference
                 change_page("add_services")
 
         
@@ -418,6 +420,7 @@ if st.session_state["completed"]:
 
                             commercial = st.session_state.get("sales_rep", "Unknown")
                             client = st.session_state["client"]
+                            client_reference = st.session_state["client_reference"]
                             folder_link = st.session_state.get("folder_link", "N/A")
 
                             freight_records = []
@@ -431,6 +434,7 @@ if st.session_state["completed"]:
                                     "request_id": f'=HYPERLINK("{folder_link}"; "{st.session_state["request_id"]}")',
                                     "commercial": commercial,
                                     "client": client,
+                                    "client_reference": client_reference,
                                     "service": service["service"],
                                 }
 
@@ -452,6 +456,18 @@ if st.session_state["completed"]:
                                     )
                                     service["details"]["info_pallets_str"] = pallets_str
                                     del service["details"]["packages"]
+                                
+                                if "dimensions_flatrack" in service["details"]:
+                                    flatrack_info = service["details"].get("dimensions_flatrack", [])
+                                    flatrack_str = "\n".join(
+                                        [
+                                            f"Weight={flat['weight_lcl']}KG, "
+                                            f"Dimensions={flat['length']}x{flat['width']}x{flat['height']}CM"
+                                            for i, flat in enumerate(flatrack_info)
+                                        ]
+                                    )
+                                    service["details"]["info_flatrack"] = flatrack_str
+                                    del service["details"]["dimensions_flatrack"]
 
                                 if service["service"] == "International Freight":
                                     routes = service["details"].get("routes", [])
@@ -509,8 +525,6 @@ if st.session_state["completed"]:
                                 )
                                 save_to_google_sheets(st.session_state["df_customs"], "Customs", sheet_id)
 
-                            #st.session_state["submitted"] = True
-
                             del st.session_state["request_id"]
                             upload_all_files_to_google_drive(folder_id)
                             clear_temp_directory()
@@ -523,7 +537,7 @@ if st.session_state["completed"]:
                             st.success("Quotation completed!")
                             st.session_state.clear()
                             change_page("select_sales_rep")
-                            #globals().clear(); locals().clear()
+
                         except Exception as e:
                             st.error(f"An error occurred: {str(e)}")
 
