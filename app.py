@@ -1,4 +1,5 @@
 for var in list(globals().keys()):
+    if var not in ["_builtins", "name", "doc", "package_", "st"]:
         del globals()[var]
 
 import streamlit as st
