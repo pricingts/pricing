@@ -1,6 +1,6 @@
-for var in list(globals().keys()):
-    if var not in ["_builtins", "name", "doc", "package_", "st"]:
-        del globals()[var]
+# for var in list(globals().keys()):
+#     if var not in ["builtins", "name", "doc", "package_", "st", "build"]:
+#         del globals()[var]
 
 import streamlit as st
 import pandas as pd
@@ -513,7 +513,7 @@ if st.session_state["completed"]:
                                 )
                                 save_to_google_sheets(st.session_state["df_customs"], "Customs", sheet_id)
 
-                            st.session_state["submitted"] = True
+                            #st.session_state["submitted"] = True
 
                             del st.session_state["request_id"]
                             upload_all_files_to_google_drive(folder_id)
@@ -525,15 +525,13 @@ if st.session_state["completed"]:
                             st.session_state["quotation_completed"] = False
                             st.session_state["page"] = "select_sales_rep"
                             st.success("Quotation completed!")
-
+                            st.session_state.clear()
                             change_page("select_sales_rep")
-
+                            #globals().clear(); locals().clear()
                         except Exception as e:
                             st.error(f"An error occurred: {str(e)}")
 
                     else:
                         st.warning("No services have been added to finalize the quotation.")
 
-                st.button("Finalize Quotation", on_click=handle_finalize_quotation, disabled=st.session_state["submitted"])
-
-            #globals().clear(); locals().clear()
+                st.button("Finalize Quotation", on_click=handle_finalize_quotation)
