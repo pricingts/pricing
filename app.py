@@ -507,13 +507,13 @@ if st.session_state["completed"]:
                             upload_all_files_to_google_drive(folder_id)
                             clear_temp_directory()
                             reset_json()
+                            st.cache_data.clear()
+                            st.cache_resource.clear()
                             st.session_state["services"] = []
                             st.session_state["start_time"] = None
                             st.session_state["end_time"] = None
                             st.session_state["quotation_completed"] = False
                             st.session_state["page"] = "select_sales_rep"
-                            st.cache_data.clear()
-                            st.cache_resource.clear()
                             st.success("Quotation completed!")
 
                             change_page("select_sales_rep")
