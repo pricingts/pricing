@@ -1,7 +1,3 @@
-# for var in list(globals().keys()):
-#     if var not in ["builtins", "name", "doc", "package_", "st", "build"]:
-#         del globals()[var]
-
 import streamlit as st
 import pandas as pd
 from google.oauth2.service_account import Credentials
