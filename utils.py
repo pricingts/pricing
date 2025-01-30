@@ -16,22 +16,22 @@ SERVICES_FILE = "services.json"
 TEMP_DIR = "temp_uploads"
 
 freight_columns = [
-    "request_id", "time", "commercial", "service", "client", "incoterm", "transport_type", "modality", "routes_info", "pickup_address", "zip_code_origin", "delivery_address", "zip_code_destination", 
+    "request_id", "time", "commercial", "service", "client", "client_reference","incoterm", "transport_type", "modality", "routes_info", "pickup_address", "zip_code_origin", "delivery_address", "zip_code_destination", 
     "commodity", "hs_code", "cargo_value", "weight", "destination_cost", 
-    "type_container", "reinforced", "food_grade", "isotank", "flexitank","imo_cargo", "imo_type", "un_code", "positioning", "pickup_city", "lcl_fcl_mode", "drayage_reefer", "reefer_cont_type", "pickup_thermo_king", "temperature", "temperature_control ",
-    "info_pallets_str", "lcl_description", "not_stackable",
+    "type_container", "info_flatrack", "reinforced", "food_grade", "isotank", "flexitank","imo_cargo", "imo_type", "un_code", "positioning", "pickup_city", "lcl_fcl_mode", "drayage_reefer", "reefer_cont_type", "pickup_thermo_king", "temperature", "temperature_control ",
+    "info_pallets_str", "lcl_description", "stackable",
     "final_comments"
 ]
 
 transport_columns = [
-    "request_id", "time", "commercial", "service", "client", "country_origin", "city_origin", "pickup_address", "zip_code_origin", "country_destination", "city_destination", "delivery_address", "zip_code_destination", "commodity", "hs_code",
+    "request_id", "time", "commercial", "service", "client", "client_reference", "country_origin", "city_origin", "pickup_address", "zip_code_origin", "country_destination", "city_destination", "delivery_address", "zip_code_destination", "commodity", "hs_code",
     "imo_cargo", "imo_type", "un_code", "ground_service", "temperature", "cargo_value",
-    "info_pallets_str", "lcl_description", "not_stackable",
+    "info_pallets_str", "lcl_description", "stackable",
     "final_comments"
 ]
 
 customs_columns = [
-    "request_id", "time", "commercial", "service", "client", "country_origin", "country_destination", "commodity", "hs_code", "imo_cargo", "imo_type", "un_code", "cargo_value",
+    "request_id", "time", "commercial", "service", "client", "client_reference","country_origin", "country_destination", "commodity", "hs_code", "imo_cargo", "imo_type", "un_code", "cargo_value",
     "info_pallets_str", "final_comments"
 ]
 
@@ -217,6 +217,39 @@ def common_questions():
         ],
         key="type_container", index=["20' Dry Standard", "40' Dry Standard", "40' Dry High Cube", "Reefer 20'", "Reefer 40'", "Open Top 20'", "Open Top 40'", "Flat Rack 20'", "Flat Rack 40'"].index(temp_details.get("type_container", "20' Dry Standard"))
     )
+
+    if type_container in ["Flat Rack 20'", "Flat Rack 40'"]:
+
+        if not temp_details.get("dimensions_flatrack"):
+                temp_details["dimensions_flatrack"] = [{"weight_lcl": 0, "length": 0, "width": 0, "height": 0}]
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            temp_details["dimensions_flatrack"][0]["weight_lcl"] = st.number_input(
+                "Weight (KG)*", key="weight_lcl_0",
+                value=temp_details["dimensions_flatrack"][0].get("weight_lcl", 0),
+                step=1, min_value=0
+            )
+        with col2:
+            temp_details["dimensions_flatrack"][0]["length"] = st.number_input(
+                "Length (CM)", key="length_0",
+                value=temp_details["dimensions_flatrack"][0].get("length", 0),
+                step=1, min_value=0
+            )
+        with col3:
+            temp_details["dimensions_flatrack"][0]["width"] = st.number_input(
+                "Width (CM)", key="width_0",
+                value=temp_details["dimensions_flatrack"][0].get("width", 0),
+                step=1, min_value=0
+            )
+        with col4:
+            temp_details["dimensions_flatrack"][0]["height"] = st.number_input(
+                "Height (CM)", key="height_0",
+                value=temp_details["dimensions_flatrack"][0].get("height", 0),
+                step=1, min_value=0
+            )
+
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         reinforced = st.checkbox("Reinforced", key="reinforced", value=temp_details.get("reinforced", False))
@@ -239,7 +272,7 @@ def common_questions():
             if msds:
                 msds_files_tank = [save_file_locally(file) for file in msds]
 
-        technical_sheets = st.file_uploader("Attach Technical Sheets*", accept_multiple_files=True, key="commercial_invoices")
+        technical_sheets = st.file_uploader("Attach Technical Sheets*", accept_multiple_files=True, key="technical_sheets")
         ts_files = []
         if technical_sheets:
             ts_files = [save_file_locally(file) for file in technical_sheets]
@@ -675,9 +708,9 @@ def lcl_questions(transport_type):
             )
 
         stackable = st.checkbox(
-        "Not stackable",
-        key="not_stackable",
-        value=temp_details.get("not_stackable", False)
+        "Stackable",
+        key="stackable",
+        value=temp_details.get("stackable", False)
     )
 
     lcl_description = st.text_area(
