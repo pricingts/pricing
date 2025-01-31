@@ -352,33 +352,50 @@ def insurance_questions():
 
 def imo_questions():
     temp_details = st.session_state.get("temp_details", {})
+    temp_details = st.session_state["temp_details"]
+
     imo_cargo = st.checkbox(
         "IMO", 
         key="imo_cargo", 
         value=temp_details.get("imo_cargo", False)
     )
-    un_code, imo_type = None, None
-    msds_files = []
+
+    un_code = temp_details.get("un_code", "")
+    imo_type = temp_details.get("imo_type", "")
+
+    if "msds_files" not in temp_details:
+        temp_details["msds_files"] = []
+
+    msds_files = temp_details["msds_files"]  # Obtener archivos previos
 
     if imo_cargo:
         col1, col2 = st.columns(2)
         with col1:
-            imo_type = st.text_input("IMO type*", key="imo_type", value=temp_details.get("imo_type", ""))
+            imo_type = st.text_input("IMO type*", key="imo_type", value=imo_type)
         with col2:
-            un_code = st.text_input("UN Code*", key="un_code", value=temp_details.get("un_code", ""))
-        msds = st.file_uploader("Attach MSDS*", accept_multiple_files=True, key="msds")
+            un_code = st.text_input("UN Code*", key="un_code", value=un_code)
 
-        for file in msds:
-                file_path = save_file_locally(file)
-                if file_path:
-                    msds_files.append(file_path)
+        if not msds_files:
+            msds = st.file_uploader("Attach MSDS*", accept_multiple_files=True, key="msds")
 
-        st.session_state["temp_details"] = {
+            if msds:
+                new_files = []
+                for file in msds:
+                    file_path = save_file_locally(file)
+                    if file_path:
+                        new_files.append(file_path)
+
+                # Agregar nuevos archivos sin borrar los anteriores
+                msds_files.extend(new_files)
+        
+        st.session_state["temp_details"]["msds_files"] = msds_files
+
+        st.session_state["temp_details"].update({
             "imo_cargo": imo_cargo,
             "imo_type": imo_type,
             "un_code": un_code,
             "msds_files": msds_files
-        }
+        })
 
     return {
         "imo_cargo": imo_cargo,
@@ -566,7 +583,6 @@ def questions_by_incoterm(incoterm, details, service, transport_type):
 
     return details, routes
 
-
 def ground_transport():
     temp_details = st.session_state.get("temp_details", {})
     data = st.session_state.get("cities_csv", [])
@@ -616,6 +632,7 @@ def ground_transport():
     commodity = st.text_input("Commodity*", key="commodity", value=temp_details.get("commodity", ""))
     hs_code = st.text_input("HS Code", key="hs_code", value=temp_details.get("hs_code", ""))
     imo = imo_questions()
+    temp_details.update(imo)
     cargo_value = st.number_input("Cargo Value (USD)*", key="cargo_value", value=temp_details.get("cargo_value", 0))
     
     temperature, dimensions_info = None, None
@@ -629,7 +646,7 @@ def ground_transport():
             key="ground_service",
             index=[
                 "Drayage 20 STD", "Drayage 40 STD/40 HC", "Dryvan", "Flat Bed", "Box Truck",
-                "Drayage Reefer 20 STD", "Drayage Reefer 40 STD", "Tractomula", "Mula Refrigerada", "LTL"
+                "Drayage Reefer 20 STD", "Drayage Reefer 40 STD", "Tractomula", "Mula Refrigerada", "LTL", "FTL 53 FT"
             ].index(temp_details.get("ground_service", "Drayage 20 STD"))
         )
     
@@ -683,8 +700,11 @@ def ground_transport():
         "zip_code_destination": zip_code_destination,
         "commodity": commodity,
         "hs_code": hs_code,
+        **imo,
+        "cargo_value": cargo_value,
         "ground_service": ground_service
     }
+
 
 def lcl_questions(transport_type):
     temp_details = st.session_state.get("temp_details", {})
@@ -790,6 +810,7 @@ def final_questions():
     }
 
 def validate_service_details(temp_details):
+
     errors = []
 
     if not isinstance(temp_details, dict):
@@ -808,7 +829,7 @@ def validate_service_details(temp_details):
     if imo:
         imo_type = temp_details.get("imo_type", "")
         un_code = temp_details.get("un_code", "")
-        msds_files = temp_details.get("msds_files", [])
+        msds_files = st.session_state["temp_details"].get("msds_files", [])
         if not msds_files:
             errors.append("MSDS is required.")
         if not imo_type:
@@ -877,7 +898,6 @@ def validate_service_details(temp_details):
                     errors.append("Technical Sheet is required.")
                 if not ss_files:
                     errors.append("Safety Sheet is required.")
-        
 
         incoterm = temp_details.get("incoterm", "")
         if incoterm in ["FCA", "EXW", "DDP", "DAP"]:
@@ -938,6 +958,7 @@ def validate_service_details(temp_details):
         city_origin = temp_details.get("city_origin", "")
         city_destination = temp_details.get("city_destination", "")
         cargo_value = temp_details.get("cargo_value", 0)
+        print(cargo_value)
 
         if not country_origin:
             errors.append("Country of Origin is required.")
@@ -951,17 +972,8 @@ def validate_service_details(temp_details):
             errors.append("Pick up address is required.")
         if not delivery_address:
             errors.append("Delivery address is required.")
-        if cargo_value == 0:
+        if cargo_value <= 0:
             errors.append("Cargo value is required.")
-
-        imo = temp_details.get("imo_cargo", False)
-        if imo:
-            imo_type = temp_details.get("imo_type", "")
-            un_code = temp_details.get("un_code", "")
-            if not imo_type:
-                errors.append("IMO type is required.")
-            if not un_code:
-                errors.append("UN Code is required.")
 
     elif service == "Customs Brokerage":
         country_origin = temp_details.get("country_origin", [])
@@ -999,42 +1011,40 @@ def validate_service_details(temp_details):
 def handle_add_service():
     prefill_temp_details()
     temp_details = st.session_state.get("temp_details", {})
+
     if not temp_details:
-        st.warning("Please provide the service details before adding.")
+        st.error("No se encontraron detalles del servicio. Por favor, completa la información.")
         return
-    
+
     service = temp_details.get("service")
     if not service or service == "-- Services --":
-        st.warning("Please enter a valid service before proceeding.")
+        st.error("Selecciona un servicio válido antes de continuar.")
         return
 
     services = st.session_state.get("services", [])
     edit_index = st.session_state.get("edit_index")
+
     temp_details = clean_service_data(temp_details)
 
-    if edit_index is not None:
-        if 0 <= edit_index < len(services):
-            st.session_state["services"][edit_index] = {
-                "service": service,
-                "details": temp_details
-            }
-            st.success("Service successfully updated.")
-            del st.session_state["edit_index"]
-        else:
-            st.warning("Invalid edit index.")
+    validation_errors = validate_service_details(temp_details)
+    if validation_errors:
+        for error in validation_errors:
+            st.error(error)
+        return
+
+    if edit_index is not None and 0 <= edit_index < len(services):
+        st.session_state["services"][edit_index] = {
+            "service": service,
+            "details": temp_details
+        }
+        st.success("Servicio actualizado correctamente.")
+        del st.session_state["edit_index"]
     else:
-        validation_errors = validate_service_details(temp_details)
-        if validation_errors:
-            for error in validation_errors:
-                st.error(error)
-            return
-        else:
-            new_service = {
-                "service": service,
-                "details": temp_details
-            }
-            st.session_state["services"].append(new_service)
-            st.success("Service successfully added.")
+        st.session_state["services"].append({
+            "service": service,
+            "details": temp_details
+        })
+        st.success("Servicio agregado correctamente.")
 
     save_services(st.session_state["services"])
     st.session_state["temp_details"] = {}
@@ -1294,18 +1304,40 @@ def prefill_temp_details():
     st.session_state["temp_details"] = temp_details
 
 def clean_service_data(service_data):
-    if service_data["service"] == "International Freight":
-        if service_data["modality"] == "LCL":
-            keys_to_remove = [
-                "positioning", "pickup_city", "lcl_fcl_mode", "type_container",
-                "reinforced", "suitable_food", "isotank", "flexitank"
-            ]
-        elif service_data["modality"] == "FCL":
-            keys_to_remove = ["lcl_description", "stackable", "packages"]
-        else:
-            keys_to_remove = []
+    service_type = service_data.get("service", "")
 
-        for key in keys_to_remove:
-            service_data.pop(key, None)
-    
-    return service_data
+    common_keys = [
+        "commodity", "hs_code", "cargo_value", "final_comments", "additional_documents_files"
+    ]
+
+    freight_keys = [
+        "routes", "transport_type", "modality", "type_container", "reinforced", "suitable_food", 
+        "imo_cargo", "imo_type", "un_code", "msds_files", "ts_files",
+        "ss_files", "msds_files_tank", "dimensions_flatrack", "temperature",
+        "reefer_cont_type", "pickup_thermo_king", "drayage_reefer", "customs_origin",
+        "insurance_required", "pickup_address", "zip_code_origin", "delivery_address",
+        "zip_code_destination", "commercial_invoice_files", "packing_list_files", "origin_certificate_files", "weight"
+        "isotank", "flexitank", "positioning", "pickup_city", "lcl_fcl_mode", "packages", "dimensions_flatrack"
+    ]
+
+    customs_keys = [
+        "packages", "country_origin", "city_origin", "country_destination", "city_destination", "imo_cargo", "imo_type", "un_code", "msds_files",
+        "ground_service", "commercial_invoice_files", "packing_list_files", "origin_certificate_files"
+    ]
+
+    ground_keys = [
+        "country_origin", "city_origin", "pickup_address", "zip_code_origin", "country_destination", "city_destination", "delivery_address", "zip_code_destination",
+        "imo_cargo", "imo_type", "un_code", "ground_service", "temperature", "lcl_description", "stackable", "packages"
+    ]
+
+    if service_type == "International Freight":
+        allowed_keys = common_keys + freight_keys
+    elif service_type == "Customs Brokerage":
+        allowed_keys = common_keys + customs_keys
+    elif service_type == "Ground Transportation":
+        allowed_keys = common_keys + ground_keys
+    else:
+        allowed_keys = common_keys 
+
+    return {key: value for key, value in service_data.items() if key in allowed_keys}
+
