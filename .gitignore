@@ -2,3 +2,4 @@
 /temp/
 /__pycache__/
 .streamlit/secrets.toml
+temp_uploads/*
