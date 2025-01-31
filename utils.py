@@ -221,32 +221,31 @@ def common_questions():
     if type_container in ["Flat Rack 20'", "Flat Rack 40'"]:
 
         if not temp_details.get("dimensions_flatrack"):
-                temp_details["dimensions_flatrack"] = [{"weight_lcl": 0, "length": 0, "width": 0, "height": 0}]
+                temp_details["dimensions_flatrack"] = [{"weight": 0, "length": 0, "width": 0, "height": 0}]
 
         col1, col2, col3, col4 = st.columns(4)
-
         with col1:
-            temp_details["dimensions_flatrack"][0]["weight_lcl"] = st.number_input(
-                "Weight (KG)*", key="weight_lcl_0",
-                value=temp_details["dimensions_flatrack"][0].get("weight_lcl", 0),
-                step=1, min_value=0
-            )
+                st.session_state.temp_details["dimensions_flatrack"][0]["weight"] = st.number_input(
+                    "Weight (KG)*", key="weight_0",
+                    value=st.session_state.temp_details["dimensions_flatrack"][0].get("weight", 0),
+                    step=1, min_value=0
+                )
         with col2:
-            temp_details["dimensions_flatrack"][0]["length"] = st.number_input(
-                "Length (CM)", key="length_0",
-                value=temp_details["dimensions_flatrack"][0].get("length", 0),
+            st.session_state.temp_details["dimensions_flatrack"][0]["length"] = st.number_input(
+                "Length (CM)*", key="length_0",
+                value=st.session_state.temp_details["dimensions_flatrack"][0].get("length", 0),
                 step=1, min_value=0
             )
         with col3:
-            temp_details["dimensions_flatrack"][0]["width"] = st.number_input(
-                "Width (CM)", key="width_0",
-                value=temp_details["dimensions_flatrack"][0].get("width", 0),
+            st.session_state.temp_details["dimensions_flatrack"][0]["width"] = st.number_input(
+                "Width (CM)*", key="width_0",
+                value=st.session_state.temp_details["dimensions_flatrack"][0].get("width", 0),
                 step=1, min_value=0
             )
         with col4:
-            temp_details["dimensions_flatrack"][0]["height"] = st.number_input(
-                "Height (CM)", key="height_0",
-                value=temp_details["dimensions_flatrack"][0].get("height", 0),
+            st.session_state.temp_details["dimensions_flatrack"][0]["height"] = st.number_input(
+                "Height (CM)*", key="height_0",
+                value=st.session_state.temp_details["dimensions_flatrack"][0].get("height", 0),
                 step=1, min_value=0
             )
 
@@ -268,7 +267,6 @@ def common_questions():
         msds_files = temp_details.get("msds_files", "")
         if not msds_files:
             msds = st.file_uploader("Attach MSDS*", accept_multiple_files=True, key="msds_tank")
-            msds_file_tank = []
             if msds:
                 msds_files_tank = [save_file_locally(file) for file in msds]
 
@@ -306,7 +304,8 @@ def common_questions():
         "msds_files_tank": msds_files_tank,
         "positioning": positioning,
         "pickup_city": pickup_city,
-        "lcl_fcl_mode": lcl_fcl_mode
+        "lcl_fcl_mode": lcl_fcl_mode,
+        "dimensions_flatrack": temp_details["dimensions_flatrack"]
     }
 
 def handle_refrigerated_cargo(cont_type, incoterm):
@@ -811,7 +810,6 @@ def validate_service_details(temp_details):
         imo_type = temp_details.get("imo_type", "")
         un_code = temp_details.get("un_code", "")
         msds_files = temp_details.get("msds_files", [])
-        print(msds_files)
         if not msds_files:
             errors.append("MSDS is required.")
         if not imo_type:
@@ -841,11 +839,44 @@ def validate_service_details(temp_details):
                     errors.append(f"The destination port of route {idx + 1} is required.")
 
         if modality == "FCL":
+            type_container = temp_details.get("type_container", "")
+            if type_container in ["Flat Rack 20'", "Flat Rack 40'"]:
+                dimensions_flatrack = temp_details.get("dimensions_flatrack", [])
+
+                if not dimensions_flatrack or not isinstance(dimensions_flatrack, list) or len(dimensions_flatrack) == 0:
+                    errors.append("Flat Rack dimensions must be provided.")
+                else:
+                    flatrack = dimensions_flatrack[0] 
+
+                    if flatrack.get("weight", 0) <= 0:
+                        errors.append("Weight must be greater than 0.")
+                    if flatrack.get("height", 0) <= 0:
+                        errors.append("Height must be greater than 0.")
+                    if flatrack.get("length", 0) <= 0:
+                        errors.append("Length must be greater than 0.")
+                    if flatrack.get("width", 0) <= 0:
+                        errors.append("Width must be greater than 0.")
+
             positioning = temp_details.get("positioning", "")
             if positioning == "In yard":
                 pickup_city = temp_details.get("pickup_city", "")
                 if not pickup_city:
                     errors.append("Pick up city is required.")
+
+            isotank = temp_details.get("isotank", False)
+            flexitank = temp_details.get("flexitank", False)
+
+            if isotank or flexitank:
+                msds_files = temp_details.get("msds_files", "")
+                ts_files = temp_details.get("ts_files", "")
+                ss_files = temp_details.get("ss_files", "")
+                if not msds_files:
+                    errors.append("MSDS is required.")
+                if not ts_files:
+                    errors.append("Technical Sheet is required.")
+                if not ss_files:
+                    errors.append("Safety Sheet is required.")
+        
 
         incoterm = temp_details.get("incoterm", "")
         if incoterm in ["FCA", "EXW", "DDP", "DAP"]:
@@ -863,20 +894,6 @@ def validate_service_details(temp_details):
                     delivery_address = temp_details.get("delivery_address", "")
                     if not delivery_address:
                         errors.append("Delivery address is required.")
-        
-        isotank = temp_details.get("isotank", False)
-        flexitank = temp_details.get("flexitank", False)
-
-        if isotank or flexitank:
-            msds_files = temp_details.get("msds_files", "")
-            ts_files = temp_details.get("ts_files", "")
-            ss_files = temp_details.get("ss_files", "")
-            if not msds_files:
-                errors.append("MSDS is required.")
-            if not ts_files:
-                errors.append("Technical Sheet is required.")
-            if not ss_files:
-                errors.append("Safety Sheet is required.")
 
         if modality == "LCL":
             packages = temp_details.get("packages", [])
