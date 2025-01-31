@@ -476,7 +476,6 @@ def handle_routes(transport_type):
     st.button("➕ Add another route", on_click=add_route)
 
 def questions_by_incoterm(incoterm, details, service, transport_type):
-
     routes_formatted = []
     if details is None:
         details = {}
@@ -867,11 +866,13 @@ def validate_service_details(temp_details):
             flexitank = temp_details.get("flexitank", False)
 
             if isotank or flexitank:
-                msds_files = temp_details.get("msds_files", "")
+                msds_files = temp_details.get("msds_files", [])
+                if not msds_files:
+                    msds_files_tank = temp_details.get("msds_files_tank", "")
+                    if not msds_files_tank:
+                        errors.append("MSDS is required.")
                 ts_files = temp_details.get("ts_files", "")
                 ss_files = temp_details.get("ss_files", "")
-                if not msds_files:
-                    errors.append("MSDS is required.")
                 if not ts_files:
                     errors.append("Technical Sheet is required.")
                 if not ss_files:
