@@ -312,7 +312,7 @@ if st.session_state["completed"]:
             with st.expander("**Final Details**", expanded=st.session_state["final_details_expander"]):
                 final_details = final_questions()
                 st.session_state["temp_details"].update(final_details)
-            
+
             col1, col2 = st.columns([0.04, 0.3])
             with col1:
                 st.button("Back", on_click=go_back, key="back_service") 
@@ -383,6 +383,7 @@ if st.session_state["completed"]:
                         st.session_state[df_name] = pd.DataFrame()
 
                 if st.session_state.get("quotation_completed", False):
+                    st.session_state.clear()
                     change_page("select_sales_rep")
                     st.stop() 
 
