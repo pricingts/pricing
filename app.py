@@ -461,7 +461,7 @@ if st.session_state["completed"]:
                                     flatrack_info = service["details"].get("dimensions_flatrack", [])
                                     flatrack_str = "\n".join(
                                         [
-                                            f"Weight={flat['weight_lcl']}KG, "
+                                            f"Weight={flat['weight']}KG, "
                                             f"Dimensions={flat['length']}x{flat['width']}x{flat['height']}CM"
                                             for i, flat in enumerate(flatrack_info)
                                         ]
