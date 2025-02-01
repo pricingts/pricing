@@ -167,7 +167,6 @@ if st.session_state["completed"]:
                 st.session_state["client_reference"] = reference
                 change_page("add_services")
 
-        
         col1, col2 = st.columns([0.04, 0.3])
         with col1:
             st.button("Back", on_click=go_back, key="back_client_name") 
