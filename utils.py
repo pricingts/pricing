@@ -18,7 +18,7 @@ TEMP_DIR = "temp_uploads"
 freight_columns = [
     "request_id", "time", "commercial", "service", "client", "client_reference","incoterm", "transport_type", "modality", "routes_info", "pickup_address", "zip_code_origin", "delivery_address", "zip_code_destination", 
     "commodity", "hs_code", "cargo_value", "weight", "destination_cost", 
-    "type_container", "info_flatrack", "reinforced", "food_grade", "isotank", "flexitank","imo_cargo", "imo_type", "un_code", "positioning", "pickup_city", "lcl_fcl_mode", "drayage_reefer", "reefer_cont_type", "pickup_thermo_king", "temperature", "temperature_control ",
+    "type_container", "info_flatrack", "reinforced", "food_grade", "isotank", "flexitank", "imo_cargo", "imo_type", "un_code", "positioning", "pickup_city", "lcl_fcl_mode", "drayage_reefer", "reefer_cont_type", "pickup_thermo_king", "temperature", "temperature_control ",
     "info_pallets_str", "lcl_description", "stackable",
     "final_comments"
 ]
@@ -85,6 +85,8 @@ def folder(request_id):
     return folder_id, folder_link
 
 def cargo(service):
+    temp_details = st.session_state.get("temp_details", {})
+
     weight = None
     commercial_invoices = st.file_uploader("Attach Commercial Invoices", accept_multiple_files=True, key="commercial_invoices")
     packing_lists = st.file_uploader("Attach Packing Lists", accept_multiple_files=True, key="packing_lists")
@@ -98,7 +100,7 @@ def cargo(service):
         pl_files = [save_file_locally(file) for file in packing_lists]
 
     if service != "Customs Brokerage":
-        weight = st.number_input("Weight", key="weight")
+        weight = st.number_input("Weight", key="weight",  value=temp_details.get("weight", 0))
 
     return {
         "commercial_invoice_files": ci_files,
@@ -296,7 +298,7 @@ def common_questions():
     return {
         "type_container": type_container,
         "reinforced": reinforced,
-        "suitable_food": food_grade,
+        "food_grade": food_grade,
         "isotank": isotank,
         "flexitank": flexitank,
         "ts_files": ts_files,
@@ -514,7 +516,7 @@ def questions_by_incoterm(incoterm, details, service, transport_type):
     delivery_address = details.get("delivery_address", None)
     zip_code_destination = details.get("zip_code_destination", None)
     insurance_required = details.get("insurance_required", False)
-    cargo_value = details.get("cargo_value", None)
+    cargo_value = details.get("cargo_value", 0)
     hs_code = details.get("hs_code", None)
     customs_info = {}
     destination_cost = details.get("destination_cost", False)
@@ -651,8 +653,8 @@ def ground_transport():
         )
     
     if ground_service in ["Mula Refrigerada", "Drayage Reefer 20 STD", "Drayage Reefer 40 STD"]:
-        temperature = st.number_input(
-            "Temperature range °C*", key="temperature", value=temp_details.get("temperature", None))
+        temperature = st.text_input(
+            "Temperature range °C*", key="temperature", value=temp_details.get("temperature", ""))
         return {
             "country_origin": country_origin,
             "city_origin": city_origin,
@@ -725,10 +727,10 @@ def lcl_questions(transport_type):
                 value=temp_details.get("temperature", "")
             )
 
-        stackable = st.checkbox(
-        "Stackable",
-        key="stackable",
-        value=temp_details.get("stackable", False)
+    stackable = st.checkbox(
+    "Stackable",
+    key="stackable",
+    value=temp_details.get("stackable", False)
     )
 
     lcl_description = st.text_area(
@@ -796,7 +798,6 @@ def final_questions():
     temp_details = st.session_state.get("temp_details", {})
 
     final_comments = st.text_area("Final Comments", key="final_comments", value=temp_details.get("final_comments", ""))
-    st.session_state["temp_details"]["final_comments"] = final_comments
 
     additional_documents = st.file_uploader("Attach Additional Documents", accept_multiple_files=True, key="additional_documents_files")
 
@@ -810,9 +811,7 @@ def final_questions():
     }
 
 def validate_service_details(temp_details):
-
     errors = []
-
     if not isinstance(temp_details, dict):
         errors.append("The 'temp_details' object is missing or not properly initialized.")
         return errors
@@ -899,23 +898,6 @@ def validate_service_details(temp_details):
                 if not ss_files:
                     errors.append("Safety Sheet is required.")
 
-        incoterm = temp_details.get("incoterm", "")
-        if incoterm in ["FCA", "EXW", "DDP", "DAP"]:
-            hs_code = temp_details.get("hs_code", "")
-            cargo_value = temp_details.get("cargo_value", 0) or 0
-            if cargo_value <= 0:
-                errors.append("Cargo value is required.")
-            if not hs_code:
-                errors.append("HS Code is required.")
-            if incoterm in ["EXW","DDP", "DAP"]:
-                pickup_address = temp_details.get("pickup_address", "")
-                if not pickup_address:
-                    errors.append("Pick up Address is required.")
-                if incoterm != "EXW":
-                    delivery_address = temp_details.get("delivery_address", "")
-                    if not delivery_address:
-                        errors.append("Delivery address is required.")
-
         if modality == "LCL":
             packages = temp_details.get("packages", [])
             if not packages:
@@ -950,6 +932,23 @@ def validate_service_details(temp_details):
                         ):
                             errors.append(f"The dimensions of package {idx + 1} must be greater than 0 if weight and volume are not specified.")
 
+        incoterm = temp_details.get("incoterm", "")
+        if incoterm in ["FCA", "EXW", "DDP", "DAP"]:
+            hs_code = temp_details.get("hs_code", "")
+            cargo_value = temp_details.get("cargo_value", 0) or 0
+            if cargo_value <= 0:
+                errors.append("Cargo value is required.")
+            if not hs_code:
+                errors.append("HS Code is required.")
+            if incoterm in ["EXW","DDP", "DAP"]:
+                pickup_address = temp_details.get("pickup_address", "")
+                if not pickup_address:
+                    errors.append("Pick up Address is required.")
+                if incoterm != "EXW":
+                    delivery_address = temp_details.get("delivery_address", "")
+                    if not delivery_address:
+                        errors.append("Delivery address is required.")          
+
     elif service == "Ground Transportation":
         pickup_address = temp_details.get("pickup_address","")
         delivery_address = temp_details.get("delivery_address", "")
@@ -958,7 +957,6 @@ def validate_service_details(temp_details):
         city_origin = temp_details.get("city_origin", "")
         city_destination = temp_details.get("city_destination", "")
         cargo_value = temp_details.get("cargo_value", 0)
-        print(cargo_value)
 
         if not country_origin:
             errors.append("Country of Origin is required.")
@@ -1305,24 +1303,29 @@ def prefill_temp_details():
 
 def clean_service_data(service_data):
     service_type = service_data.get("service", "")
+    modality = service_data.get("modality", "")
 
     common_keys = [
-        "commodity", "hs_code", "cargo_value", "final_comments", "additional_documents_files"
+        "commodity", "hs_code", "cargo_value", "final_comments", "additional_documents_files", "service"
     ]
 
-    freight_keys = [
-        "routes", "transport_type", "modality", "type_container", "reinforced", "suitable_food", 
+    freight_common__keys = [
+        "routes", "transport_type", "modality", "incoterm",
         "imo_cargo", "imo_type", "un_code", "msds_files", "ts_files",
-        "ss_files", "msds_files_tank", "dimensions_flatrack", "temperature",
-        "reefer_cont_type", "pickup_thermo_king", "drayage_reefer", "customs_origin",
+        "ss_files", "msds_files_tank", "temperature",
+        "customs_origin",
         "insurance_required", "pickup_address", "zip_code_origin", "delivery_address",
-        "zip_code_destination", "commercial_invoice_files", "packing_list_files", "origin_certificate_files", "weight"
-        "isotank", "flexitank", "positioning", "pickup_city", "lcl_fcl_mode", "packages", "dimensions_flatrack"
+        "zip_code_destination", "commercial_invoice_files", "packing_list_files", "origin_certificate_files", "weight",
+        "destination_cost"
     ]
 
-    customs_keys = [
-        "packages", "country_origin", "city_origin", "country_destination", "city_destination", "imo_cargo", "imo_type", "un_code", "msds_files",
-        "ground_service", "commercial_invoice_files", "packing_list_files", "origin_certificate_files"
+    fcl_keys = [
+        "type_container", "reinforced", "food_grade", "dimensions_flatrack", "isotank", "flexitank", "positioning", "pickup_city",
+        "lcl_fcl_mode", "reefer_cont_type", "pickup_thermo_king", "drayage_reefer", 
+    ]
+
+    lcl_keys = [
+        "packages", "lcl_description", "stackable", "temperature_control"
     ]
 
     ground_keys = [
@@ -1330,8 +1333,17 @@ def clean_service_data(service_data):
         "imo_cargo", "imo_type", "un_code", "ground_service", "temperature", "lcl_description", "stackable", "packages"
     ]
 
+    customs_keys = [
+        "packages", "country_origin", "country_destination", "imo_cargo", "imo_type", "un_code", "msds_files",
+        "commercial_invoice_files", "packing_list_files", "origin_certificate_files"
+    ]
+
     if service_type == "International Freight":
-        allowed_keys = common_keys + freight_keys
+        allowed_keys = common_keys + freight_common__keys
+        if modality == "FCL":
+            allowed_keys += fcl_keys
+        elif modality == "LCL":
+            allowed_keys += lcl_keys
     elif service_type == "Customs Brokerage":
         allowed_keys = common_keys + customs_keys
     elif service_type == "Ground Transportation":
@@ -1340,4 +1352,3 @@ def clean_service_data(service_data):
         allowed_keys = common_keys 
 
     return {key: value for key, value in service_data.items() if key in allowed_keys}
-
