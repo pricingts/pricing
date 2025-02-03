@@ -72,6 +72,7 @@ def folder(request_id):
 
 def cargo(service):
     temp_details = st.session_state.get("temp_details", {})
+    transport_type = temp_details.get("transport_type", "")
 
     weight = None
     commercial_invoices = st.file_uploader("Attach Commercial Invoices", accept_multiple_files=True, key="commercial_invoices")
@@ -85,7 +86,7 @@ def cargo(service):
     if packing_lists:
         pl_files = [save_file_locally(file) for file in packing_lists]
 
-    if service != "Customs Brokerage":
+    if service != "Customs Brokerage" and transport_type != "Air":
         weight = st.number_input("Weight", key="weight",  value=temp_details.get("weight", 0))
 
     return {
@@ -616,6 +617,7 @@ def ground_transport():
     imo = imo_questions()
     temp_details.update(imo)
     cargo_value = st.number_input("Cargo Value (USD)*", key="cargo_value", value=temp_details.get("cargo_value", 0))
+    weight = st.number_input("Weight*", key="weight", value=temp_details.get("weight", 0))
     
     temperature, dimensions_info = None, None
 
@@ -648,6 +650,7 @@ def ground_transport():
             "hs_code": hs_code,
             **imo,
             "cargo_value": cargo_value,
+            "weight": weight,
             "ground_service": ground_service,
             "temperature": temperature
         }
@@ -666,6 +669,7 @@ def ground_transport():
             "hs_code": hs_code,
             **imo,
             "cargo_value": cargo_value,
+            "weight": weight,
             "ground_service": ground_service,
             "temperature": temperature,
             **dimensions_info
@@ -684,6 +688,7 @@ def ground_transport():
         "hs_code": hs_code,
         **imo,
         "cargo_value": cargo_value,
+        "weight": weight,
         "ground_service": ground_service
     }
 
@@ -934,6 +939,8 @@ def validate_service_details(temp_details):
         city_origin = temp_details.get("city_origin", "")
         city_destination = temp_details.get("city_destination", "")
         cargo_value = temp_details.get("cargo_value", 0)
+        weight = temp_details.get("weight", 0)
+        print(weight)
 
         if not country_origin:
             errors.append("Country of Origin is required.")
@@ -949,6 +956,8 @@ def validate_service_details(temp_details):
             errors.append("Delivery address is required.")
         if cargo_value <= 0:
             errors.append("Cargo value is required.")
+        if weight <= 0:
+            errors.append("Weight is required.")
 
     elif service == "Customs Brokerage":
         country_origin = temp_details.get("country_origin", [])
@@ -1033,7 +1042,7 @@ def change_page(new_page):
     st.session_state["page"] = new_page
 
 def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
-    sheet_name = "All Quotes" 
+    sheet_name = "TEST" 
     attempts = 0
 
     while attempts < max_attempts:
@@ -1186,27 +1195,39 @@ def handle_file_uploads(file_uploader_key, label="Attach Files*", temp_dir=TEMP_
 
     return list(st.session_state[file_uploader_key].values())
 
-def upload_all_files_to_google_drive(folder_id):
+def upload_all_files_to_google_drive(folder_id, drive_service):
     try:
+        file_list = drive_service.files().list(q=f"'{folder_id}' in parents", fields="files(name)").execute()
+        existing_files = {file['name'] for file in file_list.get('files', [])}
+
         for root, _, files in os.walk(TEMP_DIR):
             for file_name in files:
                 file_path = os.path.join(root, file_name)
-                with open(file_path, "rb") as file:
-                    file_metadata = {
-                        'name': file_name,
-                        'parents': [folder_id]
-                    }
-                    media = MediaFileUpload(file_path, resumable=True)
+                
+                if file_name not in existing_files: 
+                    with open(file_path, "rb") as file:
+                        file_metadata = {'name': file_name, 'parents': [folder_id]}
+                        media = MediaFileUpload(file_path, resumable=True)
 
-                    uploaded_file = drive_service.files().create(
-                        body=file_metadata,
-                        media_body=media,
-                        fields='id, webViewLink',
-                        supportsAllDrives=True
-                    ).execute()
+                        drive_service.files().create(
+                            body=file_metadata,
+                            media_body=media,
+                            fields='id',
+                            supportsAllDrives=True
+                        ).execute()
+
+                        st.success(f"Uploaded file: {file_name}")
+
+                    try:
+                        os.remove(file_path)
+                    except Exception as e:
+                        st.error(f"Error al eliminar {file_name}: {e}")
+
+                else:
+                    st.warning(f"El archivo {file_name} ya existe en Google Drive. No se subirá de nuevo.")
 
     except Exception as e:
-        st.error(f"Failed to upload files to Google Drive: {e}")
+        st.error(f"Error al subir archivos a Google Drive: {e}")
 
 def load_existing_ids_from_sheets():
     sheet_name = "Timestamp"
@@ -1287,19 +1308,16 @@ def prefill_temp_details():
         if key not in temp_details or not temp_details[key]:  
             temp_details[key] = value
 
-    # Recuperar valores de country_origin y country_destination desde Freight
     services = load_services()
     for service in services:
         details = service.get("details", {})
 
-        # Si es Freight y tiene rutas, extraemos los países
         if service["service"] == "International Freight" and "routes" in details:
             routes = details["routes"]
             if routes and len(routes) > 0:
                 freight_country_origin = routes[0].get("country_origin", "")
                 freight_country_destination = routes[0].get("country_destination", "")
 
-                # Si Ground o Customs no tienen valores, usar los de Freight
                 if not temp_details.get("country_origin"):
                     temp_details["country_origin"] = freight_country_origin
                 if not temp_details.get("country_destination"):
@@ -1313,6 +1331,7 @@ def prefill_temp_details():
 def clean_service_data(service_data):
     service_type = service_data.get("service", "")
     modality = service_data.get("modality", "")
+    transport_type = service_data.get("transport_type", "")
 
     common_keys = [
         "commodity", "hs_code", "cargo_value", "final_comments", "additional_documents_files", "service"
@@ -1338,7 +1357,7 @@ def clean_service_data(service_data):
 
     ground_keys = [
         "country_origin", "city_origin", "pickup_address", "zip_code_origin", "country_destination", "city_destination", "delivery_address", "zip_code_destination",
-        "imo_cargo", "imo_type", "un_code", "ground_service", "temperature", "lcl_description", "stackable", "packages"
+        "imo_cargo", "imo_type", "un_code", "weight", "ground_service", "temperature", "lcl_description", "stackable", "packages"
     ]
 
     customs_keys = [
@@ -1348,9 +1367,13 @@ def clean_service_data(service_data):
 
     if service_type == "International Freight":
         allowed_keys = common_keys + freight_common__keys
-        if modality == "FCL":
-            allowed_keys += fcl_keys
-        elif modality == "LCL":
+        if transport_type == "Maritime":
+            if modality == "FCL":
+                allowed_keys += fcl_keys
+            elif modality == "LCL":
+                allowed_keys += lcl_keys
+        elif transport_type == "Air":
+            allowed_keys = [key for key in allowed_keys if key != "modality"]
             allowed_keys += lcl_keys
     elif service_type == "Customs Brokerage":
         allowed_keys = common_keys + customs_keys
