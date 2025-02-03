@@ -226,7 +226,7 @@ if st.session_state["completed"]:
             with st.expander("**Cargo Details**", expanded=st.session_state["cargo_details_expander"]):
 
                 incoterms_op = {
-                    "Maritime": ["FOB", "FCA", "CIF", "CFR", "EXW", "DDP", "DAP"],
+                    "Maritime": ["FOB", "FCA", "CIF", "CFR", "EXW", "DDP", "DAP", "CPT"],
                     "Air": ["FOB", "DDP", "DAP", "CIP", "CPT", "EXW"]
                 }
 
@@ -473,11 +473,10 @@ if st.session_state["completed"]:
                                             grouped_record["country_destination"] = routes[0]["country_destination"]
                                             grouped_record["routes_info"].add(f"Route 1: {routes[0]['country_origin']} ({routes[0]['port_origin']}) → {routes[0]['country_destination']} ({routes[0]['port_destination']})")
                                         else:
-                                            routes_str = "\n".join(
-                                                f"Route {i + 1}: {r['country_origin']} ({r['port_origin']}) → {r['country_destination']} ({r['port_destination']})"
-                                                for r in routes
-                                            )
-                                            grouped_record["routes_info"].add(routes_str)
+                                            for i, r in enumerate(routes):
+                                                grouped_record["routes_info"].add(
+                                                    f"Route {i + 1}: {r['country_origin']} ({r['port_origin']}) → {r['country_destination']} ({r['port_destination']})"
+                                                )
 
                                     # **4️⃣ Información de Paquetes**
                                     if "packages" in details:

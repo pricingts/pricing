@@ -526,7 +526,7 @@ def questions_by_incoterm(incoterm, details, service, transport_type):
             
             destination_cost = st.checkbox("Quote surcharges at destination", key="destination_cost", value=details.get("destination_cost", False))
 
-    elif incoterm in ["CIF", "CFR"]:
+    elif incoterm in ["CIF", "CFR", "CPT"]:
         hs_code = st.text_input("HS Code", key="hs_code", value=details.get("hs_code", ""))
         destination_cost = st.checkbox("Quote surcharges at destination", key="destination_cost", value=details.get("destination_cost", False))
 
@@ -1308,7 +1308,6 @@ def prefill_temp_details():
             temp_details["cargo_value"] = details.get("cargo_value", 0)
 
     st.session_state["temp_details"] = temp_details
-
 
 
 def clean_service_data(service_data):
