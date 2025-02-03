@@ -503,7 +503,7 @@ def questions_by_incoterm(incoterm, details, service, transport_type):
 
     if incoterm in ["FCA", "EXW", "DDP", "DAP"]:
         hs_code = st.text_input("HS Code*", key="hs_code", value=details.get("hs_code", ""))
-        if incoterm in ["DDP", "DAP", "EXW"]:
+        if incoterm in ["DDP", "EXW"]:
             pickup_address = st.text_input("Pickup Address*", key="pickup_address", value=pickup_address)
         else: 
             pickup_address = st.text_input("Pickup Address", key="pickup_address", value=pickup_address)
@@ -922,14 +922,16 @@ def validate_service_details(temp_details):
                 errors.append("Cargo value is required.")
             if not hs_code:
                 errors.append("HS Code is required.")
-            if incoterm in ["EXW","DDP", "DAP"]:
+
+            if incoterm in ["EXW", "DDP"]:
                 pickup_address = temp_details.get("pickup_address", "")
                 if not pickup_address:
                     errors.append("Pick up Address is required.")
-                if incoterm != "EXW":
-                    delivery_address = temp_details.get("delivery_address", "")
-                    if not delivery_address:
-                        errors.append("Delivery address is required.")          
+
+            if incoterm in ["DDP", "DAP"]:  # DDP y DAP requieren delivery_address
+                delivery_address = temp_details.get("delivery_address", "")
+                if not delivery_address:
+                    errors.append("Delivery address is required.")
 
     elif service == "Ground Transportation":
         pickup_address = temp_details.get("pickup_address","")
