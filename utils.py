@@ -1042,7 +1042,7 @@ def change_page(new_page):
     st.session_state["page"] = new_page
 
 def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
-    sheet_name = "TEST" 
+    sheet_name = "All Quotes" 
     attempts = 0
 
     while attempts < max_attempts:
