@@ -586,7 +586,7 @@ if st.session_state["completed"]:
                                 save_to_google_sheets(st.session_state["df_all_quotes"], sheet_id)
 
                                 del st.session_state["request_id"]
-                                upload_all_files_to_google_drive(folder_id)
+                                upload_all_files_to_google_drive(folder_id, drive_service)
                                 clear_temp_directory()
                                 reset_json()
                                 st.session_state["services"] = []
