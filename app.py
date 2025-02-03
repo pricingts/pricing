@@ -253,7 +253,7 @@ if st.session_state["completed"]:
                     common_details = common_questions()
                     st.session_state["temp_details"].update(common_details)
 
-                    if common_details.get("type_container") in ["Reefer 40'"]:
+                    if common_details.get("type_container") in ["Reefer 40'", "Reefer 20'"]:
                         st.markdown("**-----Refrigerated Cargo Details-----**")
                         refrigerated_cargo = handle_refrigerated_cargo(common_details["type_container"], incoterm)
                         st.session_state["temp_details"].update(refrigerated_cargo)
@@ -376,172 +376,234 @@ if st.session_state["completed"]:
                 st.button("Add Another Service", on_click=handle_another_service)
 
             with col2:
+                with col2:
+                    if "df_all_quotes" not in st.session_state:
+                        st.session_state["df_all_quotes"] = pd.DataFrame()
 
-                for df_name in ["df_freight", "df_ground_transport", "df_customs"]:
-                    if df_name not in st.session_state:
-                        st.session_state[df_name] = pd.DataFrame()
+                    if st.session_state.get("quotation_completed", False):
+                        st.session_state.clear()
+                        change_page("select_sales_rep")
+                        st.stop()
 
-                if st.session_state.get("quotation_completed", False):
-                    st.session_state.clear()
-                    change_page("select_sales_rep")
-                    st.stop() 
+                    def handle_finalize_quotation():
+                        if st.session_state.get("submitted", False):
+                            st.warning("This quotation has already been submitted.")
+                            return
 
-                def handle_finalize_quotation():
-                    if st.session_state["submitted"]:
-                        st.warning("This quotation has already been submitted.")
-                        return
-                    services = load_services()
+                        services = load_services()
+                        if services:
+                            try:
+                                if "folder_id" not in st.session_state or st.session_state["folder_request_id"] != request_id:
+                                    folder_id, folder_link = folder(request_id)
+                                    st.session_state["folder_id"] = folder_id
+                                    st.session_state["folder_link"] = folder_link
+                                    st.session_state["folder_request_id"] = request_id
 
-                    if services:
-                        try:
-                            if "folder_id" not in st.session_state or st.session_state["folder_request_id"] != request_id:
-                                folder_id, folder_link = folder(request_id)
-                                st.session_state["folder_id"] = folder_id
-                                st.session_state["folder_link"] = folder_link
-                                st.session_state["folder_request_id"] = request_id
+                                folder_id = st.session_state.get("folder_id", "No folder created")
 
-                            folder_id = st.session_state.get("folder_id", "No folder created")
+                                if not folder_id:
+                                    st.error("Failed to create or retrieve folder. Aborting finalization.")
+                                    return
 
-                            if not folder_id:
-                                st.error("Failed to create or retrieve folder. Aborting finalization.")
-                                return
+                                st.session_state["end_time"] = datetime.now(colombia_timezone)
+                                end_time = st.session_state["end_time"]
 
-                            st.session_state["end_time"] = datetime.now(colombia_timezone)
-                            end_time = st.session_state["end_time"]
+                                if st.session_state["start_time"] and st.session_state["end_time"]:
+                                    duration = (end_time - st.session_state["start_time"]).total_seconds()
+                                else:
+                                    st.error("Start time or end time is missing. Cannot calculate duration.")
+                                    return
 
-                            if st.session_state["start_time"] and st.session_state["end_time"]:
-                                duration = (end_time - st.session_state["start_time"]).total_seconds()
-                            else:
-                                st.error("Start time or end time is missing. Cannot calculate duration.")
-                                return
-    
-                            end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S')
-                            log_time(st.session_state["start_time"], end_time, duration, st.session_state["request_id"])
+                                end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S')
+                                log_time(st.session_state["start_time"], end_time, duration, st.session_state["request_id"])
 
-                            commercial = st.session_state.get("sales_rep", "Unknown")
-                            client = st.session_state["client"]
-                            client_reference = st.session_state["client_reference"]
-                            folder_link = st.session_state.get("folder_link", "N/A")
+                                commercial = st.session_state.get("sales_rep", "Unknown")
+                                client = st.session_state["client"]
+                                client_reference = st.session_state.get("client_reference", "N/A")
+                                folder_link = st.session_state.get("folder_link", "N/A")
 
-                            freight_records = []
-                            ground_transport_records = []
-                            customs_records = []
-
-                            for service in services:
-                                transport_type = service.get("details", {}).get("transport_type", None)
-                                base_info = {
+                                grouped_record = {
                                     "time": end_time_str,
                                     "request_id": f'=HYPERLINK("{folder_link}"; "{st.session_state["request_id"]}")',
                                     "commercial": commercial,
                                     "client": client,
                                     "client_reference": client_reference,
-                                    "service": service["service"],
+                                    "service": set(),
+                                    "routes_info": set(),
+                                    "container_characteristics": set(),
+                                    "imo": set(),
+                                    "info_flatrack": set(),
+                                    "info_pallets_str": set(),
+                                    "reefer_details": [],
+                                    "additional_costs": []
                                 }
 
-                                if "packages" in service["details"]:
-                                    pallets_info = service["details"].get("packages", [])
-                                    pallets_str = "\n".join(
-                                        [
-                                            f"Package {i + 1}: "
-                                            f"Type: {pack['type_packaging']}, "
-                                            f"Quantity={pack['quantity']}, "
-                                            f"Weight={pack['weight_lcl']}KG, "
-                                            + (f"Kilovolume={pack.get('kilovolume', 0.0):.2f}KG, "
-                                            if transport_type and transport_type == "Air" else
-                                            f"Volume={pack['volume']:.2f}CBM, "
-                                            ) +
-                                            f"Dimensions={pack['length']}x{pack['width']}x{pack['height']}CM"
-                                            for i, pack in enumerate(pallets_info)
-                                        ]
-                                    )
-                                    service["details"]["info_pallets_str"] = pallets_str
-                                    del service["details"]["packages"]
-                                
-                                if "dimensions_flatrack" in service["details"]:
-                                    flatrack_info = service["details"].get("dimensions_flatrack", [])
-                                    flatrack_str = "\n".join(
-                                        [
-                                            f"Weight={flat['weight']}KG, "
-                                            f"Dimensions={flat['length']}x{flat['width']}x{flat['height']}CM"
-                                            for i, flat in enumerate(flatrack_info)
-                                        ]
-                                    )
-                                    service["details"]["info_flatrack"] = flatrack_str
-                                    del service["details"]["dimensions_flatrack"]
+                                all_details = {}
 
-                                if service["service"] == "International Freight":
-                                    routes = service["details"].get("routes", [])
-                                    routes_str = (
-                                        "\n".join(
-                                            [
-                                                f"Route {i + 1}: {route['country_origin']}, {route['port_origin']} - {route['country_destination']}, {route['port_destination']} "
-                                                for i, route in enumerate(routes)
-                                            ]
-                                        )
-                                        if routes
-                                        else "No routes provided"
-                                    )
+                                for service in services:
+                                    details = service["details"]
+                                    grouped_record["service"].add(service["service"])  # Evitar duplicados
+
+                                    # **1️⃣ Características del Contenedor**
+                                    characteristics = []
+                                    if details.get("reinforced", False):
+                                        characteristics.append("Reinforced")
+                                    if details.get("food_grade", False):
+                                        characteristics.append("Food Grade")
+                                    if details.get("isotank", False):
+                                        characteristics.append("Isotank")
+                                    if details.get("flexitank", False):
+                                        characteristics.append("Flexitank")
                                     
-                                    service["details"]["routes_info"] = routes_str
-                                    del service["details"]["routes"]
-                                else:
-                                    service["details"]["routes_info"] = "Not applicable"
+                                    if characteristics:
+                                        grouped_record["container_characteristics"].add("\n".join(characteristics))
 
-                                converted_details = {
-                                    key: ("Sí" if value is True else "No" if value is False else value)
-                                    for key, value in service["details"].items()
-                                }
+                                    # **2️⃣ Información IMO**
+                                    imo_info = "Sí, IMO Type: {imo_type}, UN Code: {un_code}".format(
+                                        imo_type=details.get("imo_type", "N/A"),
+                                        un_code=details.get("un_code", "N/A")
+                                    ) if details.get("imo_cargo", False) else "No"
+                                    grouped_record["imo"].add(imo_info)
 
-                                full_record = {**base_info, **converted_details}
+                                    # **3️⃣ Información de Rutas**
+                                    if "routes" in details:
+                                        routes = details["routes"]
+                                        if len(routes) == 1:
+                                            grouped_record["country_origin"] = routes[0]["country_origin"]
+                                            grouped_record["country_destination"] = routes[0]["country_destination"]
+                                            grouped_record["routes_info"].add(f"Route 1: {routes[0]['country_origin']} ({routes[0]['port_origin']}) → {routes[0]['country_destination']} ({routes[0]['port_destination']})")
+                                        else:
+                                            routes_str = "\n".join(
+                                                f"Route {i + 1}: {r['country_origin']} ({r['port_origin']}) → {r['country_destination']} ({r['port_destination']})"
+                                                for r in routes
+                                            )
+                                            grouped_record["routes_info"].add(routes_str)
 
-                                if service["service"] == "International Freight":
-                                    freight_records.append(full_record)
-                                elif service["service"] == "Ground Transportation":
-                                    ground_transport_records.append(full_record)
-                                elif service["service"] == "Customs Brokerage":
-                                    customs_records.append(full_record)
+                                    # **4️⃣ Información de Paquetes**
+                                    if "packages" in details:
+                                        pallets_info = details.get("packages", [])
+                                        transport_type = details.get("transport_type", "") 
 
-                            if freight_records:
-                                new_freight_df = pd.DataFrame(freight_records)
-                                st.session_state["df_freight"] = pd.concat(
-                                    [st.session_state.get("df_freight", pd.DataFrame()), new_freight_df],
+                                        unique_pallets = set() 
+
+                                        for i, p in enumerate(pallets_info):
+                                            pallet_str = (
+                                                f"Package {i + 1}: Type: {p['type_packaging']}, Quantity: {p['quantity']}, "
+                                                f"Weight: {p['weight_lcl']}KG, "
+                                                f"Volume: {p.get('volume', 0):.2f}{' KVM' if transport_type == 'Air' else ' CBM'}, "
+                                                f"Dimensions: {p['length']}x{p['width']}x{p['height']}CM"
+                                            )
+                                            unique_pallets.add(pallet_str) 
+
+                                        if unique_pallets:
+                                            grouped_record["info_pallets_str"].add("\n".join(sorted(unique_pallets)))
+
+
+                                    # **5️⃣ Información de Flatrack**
+                                    if "dimensions_flatrack" in details:
+                                        flatrack_info = details.get("dimensions_flatrack", [])
+                                        flatrack_str = "\n".join(
+                                            f"Weight: {f['weight']}KG, Dimensions: {f['length']}x{f['width']}x{f['height']}CM"
+                                            for f in flatrack_info
+                                        )
+                                        grouped_record["info_flatrack"].add(flatrack_str)
+
+                                    # **6️⃣ Reefer Details (Freight & Ground Refrigerado)**
+                                    reefer_containers = ["Reefer 20'", "Reefer 40'"]
+                                    reefer_ground_services = ["Mula Refrigerada", "Drayage Reefer 20 STD", "Drayage Reefer 40 STD"]
+                                    reefer_details = []
+
+                                    container_type = details.get("type_container", "")
+                                    ground_service = details.get("ground_service", "")
+
+                                    if container_type not in reefer_containers and ground_service not in reefer_ground_services:
+                                        grouped_record["reefer_details"] = "No reefer details"
+                                    else:
+                                        if details.get("drayage_reefer", False):  
+                                            reefer_details.append("Drayage Reefer Required")
+
+                                        if details.get("pickup_thermo_king", False):  
+                                            reefer_details.append("Thermo King Pickup Required")
+
+                                        if details.get("reefer_cont_type"):  
+                                            reefer_details.append(f"Reefer Container Type: {details['reefer_cont_type']}")
+
+                                        if details.get("temperature_control", False):  
+                                            reefer_details.append("Temperature Control Required")
+
+                                        if details.get("temperature"):  
+                                            reefer_details.append(f"Temperature Range: {details['temperature']}°C")
+
+                                        grouped_record["reefer_details"] = "\n".join(reefer_details) if reefer_details else "No reefer details"
+
+                                    if isinstance(grouped_record["reefer_details"], list):
+                                        grouped_record["reefer_details"] = "\n".join(grouped_record["reefer_details"])
+
+                                    # **6️⃣ Additional Costs (destination_cost + customs_origin)**
+                                    additional_costs = []
+
+                                    if details.get("destination_cost", False):
+                                        additional_costs.append("Destination Cost Required")
+
+                                    if details.get("customs_origin", False):
+                                        additional_costs.append("Customs at Origin Required")
+
+                                    if details.get("insurance_required", False):
+                                        additional_costs.append("Insurance Required")
+
+                                    grouped_record["additional_costs"] = "\n".join(additional_costs) if additional_costs else "No additional costs"
+
+                                    # **7️⃣ Agregar detalles adicionales**
+                                    for key, value in details.items():
+                                        if key in ["reinforced", "food_grade", "isotank", "flexitank", "imo_cargo", "imo_type", "un_code", "routes", "packages", 
+                                                "dimensions_flatrack", "customs_origin", "destination_cost"]:
+                                            continue
+                                        if value is None or value == "" or (isinstance(value, (int, float)) and value == 0):
+                                            continue
+                                        if isinstance(value, bool):
+                                            value = "Sí" if value else "No"
+
+                                        if key in all_details:
+                                            all_details[key].add(str(value))
+                                        else:
+                                            all_details[key] = {str(value)}
+
+                                # **8️⃣ Convertir sets a cadenas separadas por saltos de línea**
+                                for key in ["service", "container_characteristics", "imo", "routes_info", "info_pallets_str", "info_flatrack"]:
+                                    grouped_record[key] = "\n".join(sorted(grouped_record[key])) if grouped_record[key] else ""
+
+                                for key, value_set in all_details.items():
+                                    grouped_record[key] = "\n".join(sorted(value_set))
+
+                                # **9️⃣ Crear DataFrame y guardar**
+                                new_df = pd.DataFrame([grouped_record])
+                                new_df = new_df.reindex(columns=all_quotes_columns, fill_value="")
+
+                                st.session_state["df_all_quotes"] = pd.concat(
+                                    [st.session_state.get("df_all_quotes", pd.DataFrame()), new_df],
                                     ignore_index=True
                                 )
-                                save_to_google_sheets(st.session_state["df_freight"], "Freight", sheet_id)
 
-                            if ground_transport_records:
-                                new_ground_transport_df = pd.DataFrame(ground_transport_records)
-                                st.session_state["df_ground_transport"] = pd.concat(
-                                    [st.session_state.get("df_ground_transport", pd.DataFrame()), new_ground_transport_df],
-                                    ignore_index=True
-                                )
-                                save_to_google_sheets(st.session_state["df_ground_transport"], "Ground Transport", sheet_id)
+                                save_to_google_sheets(st.session_state["df_all_quotes"], sheet_id)
 
-                            if customs_records:
-                                new_customs_df = pd.DataFrame(customs_records)
-                                st.session_state["df_customs"] = pd.concat(
-                                    [st.session_state.get("df_customs", pd.DataFrame()), new_customs_df],
-                                    ignore_index=True
-                                )
-                                save_to_google_sheets(st.session_state["df_customs"], "Customs", sheet_id)
+                                del st.session_state["request_id"]
+                                upload_all_files_to_google_drive(folder_id)
+                                clear_temp_directory()
+                                reset_json()
+                                st.session_state["services"] = []
+                                st.session_state["start_time"] = None
+                                st.session_state["end_time"] = None
+                                st.session_state["quotation_completed"] = False
+                                st.session_state["page"] = "select_sales_rep"
+                                st.success("Quotation completed!")
+                                st.session_state.clear()
+                                change_page("select_sales_rep")
 
-                            del st.session_state["request_id"]
-                            upload_all_files_to_google_drive(folder_id)
-                            clear_temp_directory()
-                            reset_json()
-                            st.session_state["services"] = []
-                            st.session_state["start_time"] = None
-                            st.session_state["end_time"] = None
-                            st.session_state["quotation_completed"] = False
-                            st.session_state["page"] = "select_sales_rep"
-                            st.success("Quotation completed!")
-                            st.session_state.clear()
-                            change_page("select_sales_rep")
+                            except Exception as e:
+                                st.error(f"An error occurred: {str(e)}")
 
-                        except Exception as e:
-                            st.error(f"An error occurred: {str(e)}")
+                        else:
+                            st.warning("No services have been added to finalize the quotation.")
 
-                    else:
-                        st.warning("No services have been added to finalize the quotation.")
 
                 st.button("Finalize Quotation", on_click=handle_finalize_quotation)

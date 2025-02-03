@@ -15,26 +15,12 @@ import pandas as pd
 SERVICES_FILE = "services.json"
 TEMP_DIR = "temp_uploads"
 
-freight_columns = [
-    "request_id", "time", "commercial", "service", "client", "client_reference","incoterm", "transport_type", "modality", "routes_info", "pickup_address", "zip_code_origin", "delivery_address", "zip_code_destination", 
-    "commodity", "hs_code", "cargo_value", "weight", "destination_cost", 
-    "type_container", "info_flatrack", "reinforced", "food_grade", "isotank", "flexitank", "imo_cargo", "imo_type", "un_code", "positioning", "pickup_city", "lcl_fcl_mode", "drayage_reefer", "reefer_cont_type", "pickup_thermo_king", "temperature", "temperature_control ",
-    "info_pallets_str", "lcl_description", "stackable",
-    "final_comments"
-]
 
-transport_columns = [
-    "request_id", "time", "commercial", "service", "client", "client_reference", "country_origin", "city_origin", "pickup_address", "zip_code_origin", "country_destination", "city_destination", "delivery_address", "zip_code_destination", "commodity", "hs_code",
-    "imo_cargo", "imo_type", "un_code", "ground_service", "temperature", "cargo_value",
-    "info_pallets_str", "lcl_description", "stackable",
-    "final_comments"
+all_quotes_columns =[
+    "request_id", "time", "commercial", "service", "client", "client_reference", "incoterm", "commodity", "hs_code", "transport_type", "modality", "routes_info", "country_origin", "country_destination", "pickup_address", "zip_code_origin", "delivery_address", "zip_code_destination",
+    "type_container", "info_flatrack", "container_characteristics", "imo", "ground_service", "reefer_details", "additional_costs", "cargo_value", "weight", "positioning", "pickup_city", "lcl_fcl_mode",
+    "info_pallets_str", "lcl_description", "stackable", "final_comments"
 ]
-
-customs_columns = [
-    "request_id", "time", "commercial", "service", "client", "client_reference","country_origin", "country_destination", "commodity", "hs_code", "imo_cargo", "imo_type", "un_code", "cargo_value",
-    "info_pallets_str", "final_comments"
-]
-
 
 sheet_id = st.secrets["general"]["sheet_id"]
 DRIVE_ID = st.secrets["general"]["drive_id"]
@@ -263,12 +249,11 @@ def common_questions():
 
     msds_files_tank = []
     ts_files = []
-    ss_files = []
 
     if isotank or flexitank:
         msds_files = temp_details.get("msds_files", "")
         if not msds_files:
-            msds = st.file_uploader("Attach MSDS*", accept_multiple_files=True, key="msds_tank")
+            msds = st.file_uploader("Attach Safety Sheet or MSDS*", accept_multiple_files=True, key="msds_tank")
             if msds:
                 msds_files_tank = [save_file_locally(file) for file in msds]
 
@@ -276,11 +261,6 @@ def common_questions():
         ts_files = []
         if technical_sheets:
             ts_files = [save_file_locally(file) for file in technical_sheets]
-        
-        safety_sheets = st.file_uploader("Attach Safety Sheets*", accept_multiple_files=True, key="safety_sheets")
-        ss_files = []
-        if safety_sheets:
-            ss_files = [save_file_locally(file) for file in safety_sheets]
 
     positioning = st.radio(
         "Container Positioning",
@@ -302,7 +282,6 @@ def common_questions():
         "isotank": isotank,
         "flexitank": flexitank,
         "ts_files": ts_files,
-        "ss_files": ss_files,
         "msds_files_tank": msds_files_tank,
         "positioning": positioning,
         "pickup_city": pickup_city,
@@ -320,7 +299,8 @@ def handle_refrigerated_cargo(cont_type, incoterm):
         default_index = reefer_types.index(temp_details.get("reefer_type", "Controlled Atmosphere"))
         reefer_cont_type = st.radio("Specify the type", reefer_types, 
                                     index=default_index, key="reefer_cont_type")
-        temperature = st.number_input("Temperature range °C", key="temperature", value=temp_details.get("temperature", None))
+    
+    temperature = st.text_input("Temperature range °C", key="temperature", value=temp_details.get("temperature", ""))
 
     if incoterm in ["EXW", "DDP", "DAP"]:
         pickup_thermo_king = st.checkbox("Thermo King Pick up", 
@@ -368,7 +348,7 @@ def imo_questions():
     if "msds_files" not in temp_details:
         temp_details["msds_files"] = []
 
-    msds_files = temp_details["msds_files"]  # Obtener archivos previos
+    msds_files = temp_details["msds_files"]
 
     if imo_cargo:
         col1, col2 = st.columns(2)
@@ -387,7 +367,6 @@ def imo_questions():
                     if file_path:
                         new_files.append(file_path)
 
-                # Agregar nuevos archivos sin borrar los anteriores
                 msds_files.extend(new_files)
         
         st.session_state["temp_details"]["msds_files"] = msds_files
@@ -586,6 +565,7 @@ def questions_by_incoterm(incoterm, details, service, transport_type):
     return details, routes
 
 def ground_transport():
+
     temp_details = st.session_state.get("temp_details", {})
     data = st.session_state.get("cities_csv", [])
     countries = data["Country"].dropna().unique().tolist()
@@ -892,11 +872,8 @@ def validate_service_details(temp_details):
                     if not msds_files_tank:
                         errors.append("MSDS is required.")
                 ts_files = temp_details.get("ts_files", "")
-                ss_files = temp_details.get("ss_files", "")
                 if not ts_files:
                     errors.append("Technical Sheet is required.")
-                if not ss_files:
-                    errors.append("Safety Sheet is required.")
 
         if modality == "LCL":
             packages = temp_details.get("packages", [])
@@ -977,6 +954,7 @@ def validate_service_details(temp_details):
         country_origin = temp_details.get("country_origin", [])
         country_destination = temp_details.get("country_destination", [])
         hs_code = temp_details.get("hs_code", "")
+        cargo_value = temp_details.get("cargo_value", 0)
 
         if not country_origin:
             errors.append("Origin Country is required.")
@@ -984,24 +962,26 @@ def validate_service_details(temp_details):
             errors.append("Destination Country is required.")
         if not hs_code:
             errors.append("HS Code is required.")
+        if cargo_value <= 0:
+            errors.append("Cargo Value is required.")
 
-        packages = temp_details.get("packages", [])
-        if not packages:
-            errors.append("At least one package is required.")
-        else:
-            for idx, package in enumerate(packages):
-                if package.get("quantity", 0) <= 0:
-                    errors.append(f"The quantity of package {idx + 1} must be greater than 0.")
-                if package.get("weight_lcl", 0) <= 0 and package.get("volume", 0) <= 0:
-                    errors.append(f"The weight or volume of package {idx + 1} must be greater than 0.")
-                if package.get("weight_lcl", 0) > 0 and package.get("volume", 0) > 0:
-                    continue
-                if (
-                    package.get("length", 0) <= 0 or 
-                    package.get("width", 0) <= 0 or 
-                    package.get("height", 0) <= 0
-                ):
-                    errors.append(f"The dimensions of package {idx + 1} must be greater than 0 if weight and volume are not specified.")
+        # packages = temp_details.get("packages", [])
+        # if not packages:
+        #     errors.append("At least one package is required.")
+        # else:
+        #     for idx, package in enumerate(packages):
+        #         if package.get("quantity", 0) <= 0:
+        #             errors.append(f"The quantity of package {idx + 1} must be greater than 0.")
+        #         if package.get("weight_lcl", 0) <= 0 and package.get("volume", 0) <= 0:
+        #             errors.append(f"The weight or volume of package {idx + 1} must be greater than 0.")
+        #         if package.get("weight_lcl", 0) > 0 and package.get("volume", 0) > 0:
+        #             continue
+        #         if (
+        #             package.get("length", 0) <= 0 or 
+        #             package.get("width", 0) <= 0 or 
+        #             package.get("height", 0) <= 0
+        #         ):
+        #             errors.append(f"The dimensions of package {idx + 1} must be greater than 0 if weight and volume are not specified.")
 
     return errors
 
@@ -1035,14 +1015,14 @@ def handle_add_service():
             "service": service,
             "details": temp_details
         }
-        st.success("Servicio actualizado correctamente.")
+        st.success("Servicio succesfully edited.")
         del st.session_state["edit_index"]
     else:
         st.session_state["services"].append({
             "service": service,
             "details": temp_details
         })
-        st.success("Servicio agregado correctamente.")
+        st.success("Service succesfully added.")
 
     save_services(st.session_state["services"])
     st.session_state["temp_details"] = {}
@@ -1052,37 +1032,24 @@ def handle_add_service():
 def change_page(new_page):
     st.session_state["page"] = new_page
 
-def save_to_google_sheets(dataframe, sheet_name, sheet_id, max_attempts=5):
+def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
+    sheet_name = "All Quotes" 
     attempts = 0
 
     while attempts < max_attempts:
         try:
             sheet = client_gcp.open_by_key(sheet_id)
+
             try:
                 worksheet = sheet.worksheet(sheet_name)
                 if worksheet.row_count == 0:
-                    if sheet_name == "Freight":
-                        worksheet.append_row([col.upper() for col in freight_columns])
-                    elif sheet_name == "Ground Transport":
-                        worksheet.append_row([col.upper() for col in transport_columns])
-                    elif sheet_name == "Customs":
-                        worksheet.append_row([col.upper() for col in customs_columns])
+                    worksheet.append_row([col.upper() for col in all_quotes_columns])
 
             except gspread.exceptions.WorksheetNotFound:
                 worksheet = sheet.add_worksheet(title=sheet_name, rows="10000", cols="50")
-                if sheet_name == "Freight":
-                    worksheet.append_row([col.upper() for col in freight_columns])
-                elif sheet_name == "Ground Transport":
-                    worksheet.append_row([col.upper() for col in transport_columns])
-                elif sheet_name == "Customs":
-                    worksheet.append_row([col.upper() for col in customs_columns])
+                worksheet.append_row([col.upper() for col in all_quotes_columns])
 
-            if sheet_name == "Freight":
-                dataframe = dataframe.reindex(columns=freight_columns)
-            elif sheet_name == "Ground Transport":
-                dataframe = dataframe.reindex(columns=transport_columns)
-            elif sheet_name == "Customs":
-                dataframe = dataframe.reindex(columns=customs_columns)
+            dataframe = dataframe.reindex(columns=all_quotes_columns, fill_value="")
 
             dataframe.columns = dataframe.columns.str.upper()
             new_data = dataframe.fillna("").values.tolist()
@@ -1282,12 +1249,33 @@ def load_shared_values_from_services():
     services = load_services()
     shared_values = {}
 
+    priority_fields = ["country_origin", "country_destination"]
+    field_values = {field: None for field in priority_fields}
+
     for service in services:
         details = service.get("details", {})
+
+        if service["service"] == "International Freight" and "routes" in details:
+            routes = details["routes"]
+            if routes and len(routes) > 0:
+                if not field_values["country_origin"]:
+                    field_values["country_origin"] = routes[0].get("country_origin", "")
+                if not field_values["country_destination"]:
+                    field_values["country_destination"] = routes[0].get("country_destination", "")
+
+        if service["service"] in ["Ground Transportation", "Customs Brokerage"]:
+            for field in priority_fields:
+                if field_values[field] is None and details.get(field) not in [None, ""]:
+                    field_values[field] = details[field]
+
         for key, value in details.items():
             if key in shared_values and shared_values[key] != value:
                 continue
             shared_values[key] = value
+
+    for field, value in field_values.items():
+        if value is not None:
+            shared_values[field] = value
 
     return shared_values
 
@@ -1296,10 +1284,32 @@ def prefill_temp_details():
     temp_details = st.session_state.get("temp_details", {})
 
     for key, value in shared_values.items():
-        if key not in temp_details: 
+        if key not in temp_details or not temp_details[key]:  
             temp_details[key] = value
 
+    # Recuperar valores de country_origin y country_destination desde Freight
+    services = load_services()
+    for service in services:
+        details = service.get("details", {})
+
+        # Si es Freight y tiene rutas, extraemos los países
+        if service["service"] == "International Freight" and "routes" in details:
+            routes = details["routes"]
+            if routes and len(routes) > 0:
+                freight_country_origin = routes[0].get("country_origin", "")
+                freight_country_destination = routes[0].get("country_destination", "")
+
+                # Si Ground o Customs no tienen valores, usar los de Freight
+                if not temp_details.get("country_origin"):
+                    temp_details["country_origin"] = freight_country_origin
+                if not temp_details.get("country_destination"):
+                    temp_details["country_destination"] = freight_country_destination
+        if not temp_details.get("cargo_value"):
+            temp_details["cargo_value"] = details.get("cargo_value", 0)
+
     st.session_state["temp_details"] = temp_details
+
+
 
 def clean_service_data(service_data):
     service_type = service_data.get("service", "")
@@ -1312,8 +1322,7 @@ def clean_service_data(service_data):
     freight_common__keys = [
         "routes", "transport_type", "modality", "incoterm",
         "imo_cargo", "imo_type", "un_code", "msds_files", "ts_files",
-        "ss_files", "msds_files_tank", "temperature",
-        "customs_origin",
+        "msds_files_tank", "temperature", "customs_origin",
         "insurance_required", "pickup_address", "zip_code_origin", "delivery_address",
         "zip_code_destination", "commercial_invoice_files", "packing_list_files", "origin_certificate_files", "weight",
         "destination_cost"
