@@ -1216,7 +1216,7 @@ def upload_all_files_to_google_drive(folder_id, drive_service):
                             supportsAllDrives=True
                         ).execute()
 
-                        st.success(f"Uploaded file: {file_name}")
+                        #st.success(f"Uploaded file: {file_name}")
 
                     try:
                         os.remove(file_path)
