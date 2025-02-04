@@ -253,9 +253,10 @@ if st.session_state["completed"]:
                     common_details = common_questions()
                     st.session_state["temp_details"].update(common_details)
 
-                    if common_details.get("type_container") in ["Reefer 40'", "Reefer 20'"]:
+                    reefer_containers = [ct for ct in common_details.get("type_container", []) if ct in ["Reefer 40'", "Reefer 20'"]]
+                    if reefer_containers:
                         st.markdown("**-----Refrigerated Cargo Details-----**")
-                        refrigerated_cargo = handle_refrigerated_cargo(common_details["type_container"], incoterm)
+                        refrigerated_cargo = handle_refrigerated_cargo(reefer_containers, incoterm)
                         st.session_state["temp_details"].update(refrigerated_cargo)
                 if modality == "LCL":
                     lcl_details = lcl_questions(transport_type)
@@ -430,6 +431,7 @@ if st.session_state["completed"]:
                                     "client_reference": client_reference,
                                     "service": set(),
                                     "routes_info": set(),
+                                    "type_container": set(),
                                     "container_characteristics": set(),
                                     "imo": set(),
                                     "info_flatrack": set(),
@@ -442,7 +444,16 @@ if st.session_state["completed"]:
 
                                 for service in services:
                                     details = service["details"]
-                                    grouped_record["service"].add(service["service"])  # Evitar duplicados
+                                    grouped_record["service"].add(service["service"]) 
+
+                                    if "type_container" in details:
+                                        if isinstance(details["type_container"], list):
+                                            grouped_record["type_container"].update(details["type_container"])  # Agregar múltiples valores únicos
+                                        else:
+                                            grouped_record["type_container"].add(details["type_container"])  # Agregar un solo valor único
+
+                                    # Convertir el set en una lista y unir los valores con saltos de línea
+                                    grouped_record["type_container"] = "\n".join(sorted(grouped_record["type_container"]))
 
                                     # **1️⃣ Características del Contenedor**
                                     characteristics = []
@@ -512,10 +523,11 @@ if st.session_state["completed"]:
                                     reefer_ground_services = ["Mula Refrigerada", "Drayage Reefer 20 STD", "Drayage Reefer 40 STD"]
                                     reefer_details = []
 
-                                    container_type = details.get("type_container", "")
+                                    container_type = details.get("type_container", [])
                                     ground_service = details.get("ground_service", "")
+                                    is_reefer_container = any(ct in reefer_containers for ct in container_type)
 
-                                    if container_type not in reefer_containers and ground_service not in reefer_ground_services:
+                                    if not is_reefer_container and ground_service not in reefer_ground_services:
                                         grouped_record["reefer_details"] = "No reefer details"
                                     else:
                                         if details.get("drayage_reefer", False):  
@@ -555,7 +567,7 @@ if st.session_state["completed"]:
                                     # **7️⃣ Agregar detalles adicionales**
                                     for key, value in details.items():
                                         if key in ["reinforced", "food_grade", "isotank", "flexitank", "imo_cargo", "imo_type", "un_code", "routes", "packages", 
-                                                "dimensions_flatrack", "customs_origin", "destination_cost"]:
+                                                "dimensions_flatrack", "customs_origin", "destination_cost", "type_container"]:
                                             continue
                                         if value is None or value == "" or (isinstance(value, (int, float)) and value == 0):
                                             continue
@@ -603,6 +615,5 @@ if st.session_state["completed"]:
 
                         else:
                             st.warning("No services have been added to finalize the quotation.")
-
 
                 st.button("Finalize Quotation", on_click=handle_finalize_quotation)

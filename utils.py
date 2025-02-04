@@ -191,9 +191,17 @@ def dimensions():
 
 def common_questions():
     temp_details = st.session_state.get("temp_details", {})
-    type_container = st.selectbox(
+
+    if not temp_details.get("dimensions_flatrack"):
+            temp_details["dimensions_flatrack"] = [{"weight": 0, "length": 0, "width": 0, "height": 0}]
+
+    container_types = temp_details.get("type_container", ["20' Dry Standard"])
+    if not isinstance(container_types, list):
+        container_types = [container_types] 
+
+    type_container = st.multiselect(
         "Type of container*",
-        [
+        options=[
             "20' Dry Standard",
             "40' Dry Standard",
             "40' Dry High Cube",
@@ -204,13 +212,11 @@ def common_questions():
             "Flat Rack 20'",
             "Flat Rack 40'"
         ],
-        key="type_container", index=["20' Dry Standard", "40' Dry Standard", "40' Dry High Cube", "Reefer 20'", "Reefer 40'", "Open Top 20'", "Open Top 40'", "Flat Rack 20'", "Flat Rack 40'"].index(temp_details.get("type_container", "20' Dry Standard"))
+        default=container_types, 
+        key="type_container"
     )
 
-    if type_container in ["Flat Rack 20'", "Flat Rack 40'"]:
-
-        if not temp_details.get("dimensions_flatrack"):
-                temp_details["dimensions_flatrack"] = [{"weight": 0, "length": 0, "width": 0, "height": 0}]
+    if any(tc in ["Flat Rack 20'", "Flat Rack 40'"] for tc in type_container):
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -290,16 +296,23 @@ def common_questions():
         "dimensions_flatrack": temp_details["dimensions_flatrack"]
     }
 
-def handle_refrigerated_cargo(cont_type, incoterm):
+def handle_refrigerated_cargo(reefer_containers, incoterm):
     temp_details = st.session_state.get("temp_details", {})
     reefer_cont_type, drayage_reefer = None, None
-    pickup_thermo_king, temperature = None, None
+    pickup_thermo_king = None
 
-    if cont_type == "Reefer 40'":
-        reefer_types = ["Controlled Atmosphere", "Cold Treatment"]
-        default_index = reefer_types.index(temp_details.get("reefer_type", "Controlled Atmosphere"))
-        reefer_cont_type = st.radio("Specify the type", reefer_types, 
-                                    index=default_index, key="reefer_cont_type")
+    for cont_type in reefer_containers:
+        if cont_type == "Reefer 40'":
+            st.markdown(f"Details for {cont_type}")
+            reefer_types = ["Controlled Atmosphere", "Cold Treatment"]
+            default_reefer_type = temp_details.get(f"reefer_type_{cont_type}", "Controlled Atmosphere")
+
+            reefer_cont_type = st.radio(
+                f"Specify the type for {cont_type}",
+                reefer_types,
+                index=reefer_types.index(default_reefer_type),
+                key=f"reefer_cont_type_{cont_type}"
+            )
     
     temperature = st.text_input("Temperature range °C", key="temperature", value=temp_details.get("temperature", ""))
 
@@ -502,7 +515,8 @@ def questions_by_incoterm(incoterm, details, service, transport_type):
     destination_cost = details.get("destination_cost", False)
 
     if incoterm in ["FCA", "EXW", "DDP", "DAP"]:
-        hs_code = st.text_input("HS Code*", key="hs_code", value=details.get("hs_code", ""))
+        hs_code_label = "HS Code*" if incoterm != "DAP" else "HS Code"
+        hs_code = st.text_input(hs_code_label, key="hs_code", value=details.get("hs_code", ""))
         if incoterm in ["DDP", "EXW"]:
             pickup_address = st.text_input("Pickup Address*", key="pickup_address", value=pickup_address)
         else: 
@@ -696,7 +710,7 @@ def ground_transport():
 
 def lcl_questions(transport_type):
     temp_details = st.session_state.get("temp_details", {})
-    temperature, temperature_control, stackable = None, None, None
+    temperature, temperature_control = None, None
 
     dimensions_info = dimensions()
 
@@ -713,10 +727,11 @@ def lcl_questions(transport_type):
                 value=temp_details.get("temperature", "")
             )
 
-    stackable = st.checkbox(
-    "Stackable",
-    key="stackable",
-    value=temp_details.get("stackable", False)
+    stackable = st.radio(
+        "Stackable*",
+        options=["Yes", "No"],
+        index=0 if temp_details.get("stackable", "") else 1,
+        key="stackable"
     )
 
     lcl_description = st.text_area(
@@ -921,7 +936,7 @@ def validate_service_details(temp_details):
             cargo_value = temp_details.get("cargo_value", 0) or 0
             if cargo_value <= 0:
                 errors.append("Cargo value is required.")
-            if not hs_code:
+            if not hs_code and incoterm != "DAP":
                 errors.append("HS Code is required.")
 
             if incoterm in ["EXW", "DDP"]:
@@ -929,7 +944,7 @@ def validate_service_details(temp_details):
                 if not pickup_address:
                     errors.append("Pick up Address is required.")
 
-            if incoterm in ["DDP", "DAP"]:  # DDP y DAP requieren delivery_address
+            if incoterm in ["DDP", "DAP"]: 
                 delivery_address = temp_details.get("delivery_address", "")
                 if not delivery_address:
                     errors.append("Delivery address is required.")
@@ -1045,7 +1060,7 @@ def change_page(new_page):
     st.session_state["page"] = new_page
 
 def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
-    sheet_name = "All Quotes" 
+    sheet_name = "Test" 
     attempts = 0
 
     while attempts < max_attempts:
