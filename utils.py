@@ -621,19 +621,20 @@ def ground_transport():
     
     temperature, dimensions_info = None, None
 
+    options = [
+        "Drayage 20 STD", "Drayage 40 STD/40 HC", "Dryvan", "FTL 53 FT", "Flat Bed", "Box Truck",
+        "Drayage Reefer 20 STD", "Drayage Reefer 40 STD", "Tractomula", "Mula Refrigerada", "LTL"
+    ]
+    default_value = temp_details.get("ground_service", "Drayage 20 STD")
+    index = options.index(default_value) if default_value in options else 0
+
     ground_service = st.selectbox(
-            "Select Ground Service*",
-            [
-                "Drayage 20 STD", "Drayage 40 STD/40 HC", "FTL 53 FT", "Flat Bed", "Box Truck",
-                "Drayage Reefer 20 STD", "Drayage Reefer 40 STD", "Tractomula", "Mula Refrigerada", "LTL"
-            ],
-            key="ground_service",
-            index=[
-                "Drayage 20 STD", "Drayage 40 STD/40 HC", "Dryvan", "Flat Bed", "Box Truck",
-                "Drayage Reefer 20 STD", "Drayage Reefer 40 STD", "Tractomula", "Mula Refrigerada", "LTL", "FTL 53 FT"
-            ].index(temp_details.get("ground_service", "Drayage 20 STD"))
-        )
-    
+        "Select Ground Service*",
+        options,
+        key="ground_service",
+        index=index
+    )
+
     if ground_service in ["Mula Refrigerada", "Drayage Reefer 20 STD", "Drayage Reefer 40 STD"]:
         temperature = st.text_input(
             "Temperature range °C*", key="temperature", value=temp_details.get("temperature", ""))
