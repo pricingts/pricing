@@ -1147,7 +1147,7 @@ def create_folder(folder_name, parent_folder_id):
         return None, None
 
 def log_time(start_time, end_time, duration, request_id):
-    sheet_name = "Timestamp"
+    sheet_name = "Duration Time Quotation"
     try:
         sheet = client_gcp.open_by_key(time_sheet_id)
         try:
@@ -1248,7 +1248,7 @@ def upload_all_files_to_google_drive(folder_id, drive_service):
         st.error(f"Error al subir archivos a Google Drive: {e}")
 
 def load_existing_ids_from_sheets():
-    sheet_name = "Timestamp"
+    sheet_name = "Duration Time Quotation"
     while True: 
         try:
             sheet = client_gcp.open_by_key(time_sheet_id)

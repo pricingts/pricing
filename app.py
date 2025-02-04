@@ -99,12 +99,20 @@ def generate_request_id():
         st.session_state["generated_ids"] = set()
 
     existing_ids = load_existing_ids_from_sheets()
+    new_sequence_ids = [
+        int(id[1:]) for id in existing_ids 
+        if id.startswith('Q') and id[1:].isdigit()
+    ]
 
-    while True:
-        unique_id = "Q" + "".join(random.choices(string.digits, k=4))
-        if unique_id not in st.session_state["generated_ids"] and unique_id not in existing_ids:
-            st.session_state["generated_ids"].add(unique_id)
-            return unique_id
+    if new_sequence_ids:
+        next_id = max(new_sequence_ids) + 1
+    else:
+        next_id = 1 
+
+    unique_id = f"Q{next_id:04d}"
+
+    st.session_state["generated_ids"].add(unique_id)
+    return unique_id
 
 #------------------------------------APP----------------------------------------
 col1, col2, col3 = st.columns([1, 2, 1])
