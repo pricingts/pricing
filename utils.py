@@ -60,6 +60,11 @@ def save_file_locally(file, temp_dir=TEMP_DIR):
         st.error(f"⚠️ Error al guardar el archivo: {e}")
         return None
 
+@st.cache_data(ttl=3600000)
+def load_csv(file):
+    df = pd.read_csv(file)
+    return df
+
 def folder(request_id):
     if validate_shared_drive_folder(PARENT_FOLDER_ID):
         folder_id = create_folder(request_id, PARENT_FOLDER_ID)
@@ -415,14 +420,30 @@ def handle_routes(transport_type):
     initialize_routes()
     
     if transport_type == "Air":
+        if "cities_csv" not in st.session_state or st.session_state["cities_csv"] is None:
+            try:
+                st.session_state["cities_csv"] = load_csv("cities_world.csv")
+            except Exception as e:
+                st.error(f"⚠️ Error cargando cities_world.csv: {e}")
+                return
+        csv_data = st.session_state["cities_csv"]
         csv_data = st.session_state.get("cities_csv", {})
         route_options = csv_data.get("Country", pd.Series()).dropna().astype(str).unique().tolist()
+
     elif transport_type == "Maritime":
+        if "ports_csv" not in st.session_state or st.session_state["ports_csv"] is None:
+            try:
+                st.session_state["ports_csv"] = load_csv("output_port_world.csv")
+                print("cargue")
+            except Exception as e:
+                st.error(f"⚠️ Error cargando output_port_world.csv: {e}")
+                return
+        csv_data = st.session_state["ports_csv"]
         csv_data = st.session_state.get("ports_csv", {})
         route_options = csv_data.get("country", pd.Series()).dropna().astype(str).unique().tolist()
     else:
         route_options = []
-    
+
     for i in range(len(st.session_state["routes"])):
         route = st.session_state["routes"][i]
         st.markdown(f"### Route {i+1}")
