@@ -515,11 +515,14 @@ if st.session_state["completed"]:
                                     # **5️⃣ Información de Flatrack**
                                     if "dimensions_flatrack" in details:
                                         flatrack_info = details.get("dimensions_flatrack", [])
-                                        flatrack_str = "\n".join(
-                                            f"Weight: {f['weight']}KG, Dimensions: {f['length']}x{f['width']}x{f['height']}CM"
-                                            for f in flatrack_info
-                                        )
-                                        grouped_record["info_flatrack"].add(flatrack_str)
+                                        if any(any(v > 0 for v in f.values()) for f in flatrack_info):
+                                            flatrack_str = "\n".join(
+                                                f"Weight: {f['weight']}KG, Dimensions: {f['length']}x{f['width']}x{f['height']}CM"
+                                                for f in flatrack_info
+                                            )
+                                            grouped_record["info_flatrack"].add(flatrack_str)
+                                        else:
+                                            grouped_record["info_flatrack"].add("")
 
                                     # **6️⃣ Reefer Details (Freight & Ground Refrigerado)**
                                     reefer_containers = ["Reefer 20'", "Reefer 40'"]
