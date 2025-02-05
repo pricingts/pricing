@@ -42,11 +42,6 @@ def clear_temp_directory():
         for file_name in files:
             os.remove(os.path.join(root, file_name))
 
-@st.cache_data(ttl=3600)
-def load_csv(file):
-    df = pd.read_csv(file)
-    return df
-
 def initialize_state():
     default_values = {
         "page": "select_sales_rep",
@@ -76,13 +71,13 @@ def initialize_state():
     reset_json()
     clear_temp_directory()
 
-    if st.session_state["ports_csv"] not in st.session_state:
+    if "ports_csv" not in st.session_state or st.session_state["ports_csv"] is None:
         try:
             st.session_state["ports_csv"] = load_csv("output_port_world.csv")
         except Exception as e:
             st.error("Error loading CSV data. Please check the file path or format.")
 
-    if st.session_state["cities_csv"] not in st.session_state:
+    if "cities_csv" not in st.session_state or st.session_state["cities_csv"] is None:
         try:
             st.session_state["cities_csv"] = load_csv("cities_world.csv")
         except Exception as e:
