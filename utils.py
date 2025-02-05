@@ -881,6 +881,8 @@ def validate_service_details(temp_details):
 
         if modality == "FCL":
             type_container = temp_details.get("type_container", "")
+            if not type_container:
+                errors.append("Choose a container type")
             if type_container in ["Flat Rack 20'", "Flat Rack 40'"]:
                 dimensions_flatrack = temp_details.get("dimensions_flatrack", [])
 
@@ -979,7 +981,6 @@ def validate_service_details(temp_details):
         city_destination = temp_details.get("city_destination", "")
         cargo_value = temp_details.get("cargo_value", 0)
         weight = temp_details.get("weight", 0)
-        print(weight)
 
         if not country_origin:
             errors.append("Country of Origin is required.")
@@ -1081,7 +1082,7 @@ def change_page(new_page):
     st.session_state["page"] = new_page
 
 def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
-    sheet_name = "All Quotes" 
+    sheet_name = "All Quotes"  #RECORDAR SIEMPRE CAMBIAR A All Quotes CUANDO SE VAYA A HACER COMMIT
     attempts = 0
 
     while attempts < max_attempts:
@@ -1168,7 +1169,7 @@ def create_folder(folder_name, parent_folder_id):
         return None, None
 
 def log_time(start_time, end_time, duration, request_id):
-    sheet_name = "Duration Time Quotation"
+    sheet_name = "Duration Time Quotation" #Cambiar a Duration Time Quotation
     try:
         sheet = client_gcp.open_by_key(time_sheet_id)
         try:
@@ -1269,7 +1270,7 @@ def upload_all_files_to_google_drive(folder_id, drive_service):
         st.error(f"Error al subir archivos a Google Drive: {e}")
 
 def load_existing_ids_from_sheets():
-    sheet_name = "Duration Time Quotation"
+    sheet_name = "Duration Time Quotation" #cambiar a Duration Time Quotation
     while True: 
         try:
             sheet = client_gcp.open_by_key(time_sheet_id)
