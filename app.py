@@ -65,8 +65,7 @@ def initialize_state():
         if key not in st.session_state:
             st.session_state[key] = value
 
-    if not st.session_state.get("request_id"):
-        st.session_state["request_id"] = generate_request_id()
+    st.session_state["request_id"] = None
 
     reset_json()
     clear_temp_directory()
@@ -119,20 +118,16 @@ if "initialized" not in st.session_state or not st.session_state["initialized"]:
     initialize_state()
 
 if st.session_state["completed"]:
-    if "request_id" not in st.session_state or not st.session_state["request_id"]:
-        st.session_state["request_id"] = generate_request_id()
-        st.session_state["start_time"] = datetime.now(colombia_timezone)
 
-    elif st.session_state.get("start_time") is None:
+    st.session_state["start_time"] = datetime.now(colombia_timezone)
+
+    if st.session_state.get("start_time") is None:
         st.session_state["start_time"] = datetime.now(colombia_timezone)
     
     if st.session_state.get("start_time") is None:
         st.session_state["start_time"] = datetime.now(colombia_timezone)
 
-    request_id = st.session_state['request_id']
     start_time = st.session_state["start_time"]
-
-    st.write(f"**Quotation ID: {request_id}**")
 
     if st.session_state["page"] == "select_sales_rep":
 
@@ -228,14 +223,8 @@ if st.session_state["completed"]:
 
             with st.expander("**Cargo Details**", expanded=st.session_state["cargo_details_expander"]):
 
-                incoterms_op = {
-                    "Maritime": ["FOB", "FCA", "CIF", "CFR", "EXW", "DDP", "DAP", "CPT"],
-                    "Air": ["FOB", "DDP", "DAP", "CIP", "CPT", "EXW"]
-                }
-
-                incoterm_options = incoterms_op.get(transport_type, [])
-
-                incoterm = st.selectbox("Select Incoterm*", incoterm_options, key="incoterm")
+                incoterms_list = ["FOB", "FCA", "CIF", "CFR", "EXW", "DDP", "DAP", "CPT"]
+                incoterm = st.selectbox("Select Incoterm*", incoterms_list, key="incoterm")
 
                 if incoterm:
                     incoterm_result = questions_by_incoterm(incoterm, st.session_state["temp_details"], service, transport_type)
@@ -393,6 +382,11 @@ if st.session_state["completed"]:
                         if st.session_state.get("submitted", False):
                             st.warning("This quotation has already been submitted.")
                             return
+                        
+                        if not st.session_state.get("request_id"): 
+                            st.session_state["request_id"] = generate_request_id()
+
+                        request_id = st.session_state["request_id"]
 
                         services = load_services()
                         if services:
@@ -500,11 +494,14 @@ if st.session_state["completed"]:
                                         unique_pallets = set() 
 
                                         for i, p in enumerate(pallets_info):
+                                            weight_unit = p.get("weight_unit", "KG") 
+                                            length_unit = p.get("length_unit", "CM")
+
                                             pallet_str = (
                                                 f"Package {i + 1}: Type: {p['type_packaging']}, Quantity: {p['quantity']}, "
-                                                f"Weight: {p['weight_lcl']}KG, "
-                                                f"Volume: {p.get('volume', 0):.2f}{' KVM' if transport_type == 'Air' else ' CBM'}, "
-                                                f"Dimensions: {p['length']}x{p['width']}x{p['height']}CM"
+                                                f"Weight: {p['weight_lcl']:.2f} {weight_unit}, "
+                                                f"Volume: {p.get('volume', 0):.2f} {'KVM' if transport_type == 'Air' else 'CBM'}, "
+                                                f"Dimensions: {p['length']:.2f} {length_unit} x {p['width']:.2f} {length_unit} x {p['height']:.2f} {length_unit}"
                                             )
                                             unique_pallets.add(pallet_str) 
 
@@ -515,9 +512,11 @@ if st.session_state["completed"]:
                                     # **5️⃣ Información de Flatrack**
                                     if "dimensions_flatrack" in details:
                                         flatrack_info = details.get("dimensions_flatrack", [])
-                                        if any(any(v > 0 for v in f.values()) for f in flatrack_info):
+                                        if any(any(v > 0 for v in f.values() if isinstance(v, (int, float))) for f in flatrack_info):
                                             flatrack_str = "\n".join(
-                                                f"Weight: {f['weight']}KG, Dimensions: {f['length']}x{f['width']}x{f['height']}CM"
+                                                f"Weight: {f['weight']:.2f} {f.get('weight_unit', 'KG')}, "
+                                                f"Dimensions: {f['length']:.2f} {f.get('length_unit', 'CM')} x "
+                                                f"{f['width']:.2f} {f.get('length_unit', 'CM')} x {f['height']:.2f} {f.get('length_unit', 'CM')}"
                                                 for f in flatrack_info
                                             )
                                             grouped_record["info_flatrack"].add(flatrack_str)
@@ -612,7 +611,7 @@ if st.session_state["completed"]:
                                 st.session_state["end_time"] = None
                                 st.session_state["quotation_completed"] = False
                                 st.session_state["page"] = "select_sales_rep"
-                                st.success("Quotation completed!")
+                                st.success(f"Quotation completed! Your request ID is {request_id}")
                                 st.session_state.clear()
                                 change_page("select_sales_rep")
 

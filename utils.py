@@ -92,7 +92,8 @@ def cargo(service):
         pl_files = [save_file_locally(file) for file in packing_lists]
 
     if service != "Customs Brokerage" and transport_type != "Air":
-        weight = st.number_input("Weight", key="weight",  value=temp_details.get("weight", 0))
+        weight = st.number_input("Total Weight", key="weight",  value=float(temp_details.get("weight", 0.0)),  
+                                step=0.01,  min_value=0.0)
 
     return {
         "commercial_invoice_files": ci_files,
@@ -111,12 +112,14 @@ def dimensions():
         st.session_state.packages.append({
             "type_packaging": "Pallet",
             "quantity": 0,
-            "weight_lcl": 0,
+            "weight_lcl": 0.0,
+            "length": 0.0,
+            "width": 0.0,
+            "height": 0.0,
             "volume": 0.0,
-            "length": 0,
-            "width": 0,
-            "height": 0,
-            "kilovolume": 0.0
+            "kilovolume": 0.0,
+            "weight_unit": "KG",
+            "length_unit": "CM"
         })
 
     def remove_package(index):
@@ -125,26 +128,30 @@ def dimensions():
 
     def copy_package(index):
         if 0 <= index < len(st.session_state.packages):
-            copied_package = {
-                "type_packaging": st.session_state.packages[index]["type_packaging"],
-                "quantity": st.session_state.packages[index]["quantity"],
-                "weight_lcl": st.session_state.packages[index]["weight_lcl"],
-                "volume": st.session_state.packages[index]["volume"],
-                "length": st.session_state.packages[index]["length"],
-                "width": st.session_state.packages[index]["width"],
-                "height": st.session_state.packages[index]["height"],
-                "kilovolume": st.session_state.packages[index]["kilovolume"],
-            }
+            copied_package = st.session_state.packages[index].copy()
             st.session_state.packages.append(copied_package)
         else:
             st.error("Invalid index. Cannot copy package.")
 
+    weight_conversion = {
+        "KG": 1,
+        "Ton": 1000,
+        "Lbs": 0.453592
+    }
+    
+    length_conversion = {
+        "CM": 1,
+        "M": 100,
+        "MM": 0.1,
+        "Inches": 2.54
+    }
+
     for i in range(len(st.session_state.packages)):
         st.markdown(f"**Package {i + 1}**")
 
-        col1, col2, col3 = st.columns(3)
-        col4, col5, col6, col7 = st.columns(4)
-        col8, col9 = st.columns([0.04, 0.3])
+        col1, col2, col3, col4 = st.columns(4)
+        col5, col6, col7, col8, col9 = st.columns(5)
+        col10, col11 = st.columns([0.04, 0.3])
 
         with col1:
             st.session_state.packages[i]["type_packaging"] = st.selectbox(
@@ -152,53 +159,93 @@ def dimensions():
                 index=["Pallet", "Box", "Bag"].index(st.session_state.packages[i].get("type_packaging", "Pallet")),
                 key=f"type_packaging_{i}"
             )
+
         with col2:
             st.session_state.packages[i]["quantity"] = st.number_input(
                 "Quantity*", key=f"quantity_{i}", value=st.session_state.packages[i].get("quantity", 0), step=1, min_value=0)
+        
         with col3:
-            st.session_state.packages[i]["weight_lcl"] = st.number_input(
-                "Weight (KG)*", key=f"weight_lcl_{i}", value=st.session_state.packages[i].get("weight_lcl", 0), step=1, min_value=0)
+            st.session_state.packages[i]["weight_unit"] = st.selectbox(
+                "Weight Unit", ["KG", "Ton", "Lbs"],
+                index=["KG", "Ton", "Lbs"].index(st.session_state.packages[i].get("weight_unit", "KG")),
+                key=f"weight_unit_{i}"
+            )
         with col4:
-            st.session_state.packages[i]["length"] = st.number_input(
-                "Length (CM)", key=f"length_{i}", value=st.session_state.packages[i].get("length", 0), step=1, min_value=0)
+            st.session_state.packages[i]["weight_lcl"] = st.number_input(
+                "Weight*", key=f"weight_lcl_{i}", 
+                value=float(st.session_state.packages[i].get("weight_lcl", 0.0)), 
+                step=0.01, min_value=0.0
+            )
+
         with col5:
-            st.session_state.packages[i]["width"] = st.number_input(
-                "Width (CM)", key=f"width_{i}", value=st.session_state.packages[i].get("width", 0), step=1, min_value=0)
+            st.session_state.packages[i]["length_unit"] = st.selectbox(
+                "Length Unit", ["CM", "M", "MM", "Inches"],
+                index=["CM", "M", "MM", "Inches"].index(st.session_state.packages[i].get("length_unit", "CM")),
+                key=f"length_unit_{i}"
+            )
         with col6:
-            st.session_state.packages[i]["height"] = st.number_input(
-                "Height (CM)", key=f"height_{i}", value=st.session_state.packages[i].get("height", 0), step=1, min_value=0)
-            
-            length = st.session_state.packages[i]["length"]
-            width = st.session_state.packages[i]["width"]
-            height = st.session_state.packages[i]["height"]
-            if length > 0 and width > 0 and height > 0:
-                st.session_state.packages[i]["volume"] = (length * width * height) / 1000000 #M3
+            st.session_state.packages[i]["length"] = st.number_input(
+                "Length", key=f"length_{i}", 
+                value=float(st.session_state.packages[i].get("length", 0.0)), 
+                step=0.01, min_value=0.0
+            )
 
         with col7:
+            st.session_state.packages[i]["width"] = st.number_input(
+                "Width", key=f"width_{i}", 
+                value=float(st.session_state.packages[i].get("width", 0.0)), 
+                step=0.01, min_value=0.0
+            )
+
+        with col8:
+            st.session_state.packages[i]["height"] = st.number_input(
+                "Height", key=f"height_{i}", 
+                value=float(st.session_state.packages[i].get("height", 0.0)), 
+                step=0.01, min_value=0.0
+            )
+
+        # Conversión de valores a CM y KG
+        weight_kg = st.session_state.packages[i]["weight_lcl"] * weight_conversion[st.session_state.packages[i]["weight_unit"]]
+        length_cm = st.session_state.packages[i]["length"] * length_conversion[st.session_state.packages[i]["length_unit"]]
+        width_cm = st.session_state.packages[i]["width"] * length_conversion[st.session_state.packages[i]["length_unit"]]
+        height_cm = st.session_state.packages[i]["height"] * length_conversion[st.session_state.packages[i]["length_unit"]]
+
+        if length_cm > 0 and width_cm > 0 and height_cm > 0:
+            st.session_state.packages[i]["volume"] = (length_cm * width_cm * height_cm) / 1000000  # Convertir a m³
+
+        with col9:
             if transport_type == "Air":
-                st.session_state.packages[i]["kilovolume"] = st.session_state.packages[i]["volume"] * 166.6 #KV
+                st.session_state.packages[i]["kilovolume"] = st.session_state.packages[i]["volume"] * 166.6  # KV
             
             if transport_type == "Air":
                 st.session_state.packages[i]["kilovolume"] = st.number_input(
-                    "Kilovolume (KVM)*", key=f"kilovolume_{i}", value=st.session_state.packages[i].get("kilovolume", 0.0), step=0.1, min_value=0.0)
+                    "Kilovolume (KVM)*", key=f"kilovolume_{i}", 
+                    value=float(st.session_state.packages[i].get("kilovolume", 0.0)), 
+                    step=0.01, min_value=0.0
+                )
             else:
                 st.session_state.packages[i]["volume"] = st.number_input(
-                    "Volume (CBM)*", key=f"volume_{i}", value=st.session_state.packages[i].get("volume", 0.0), step=0.01, min_value=0.0)
+                    "Volume (CBM)*", key=f"volume_{i}", 
+                    value=float(st.session_state.packages[i].get("volume", 0.0)), 
+                    step=0.01, min_value=0.0
+                )
 
-        with col8:
+        with col10:
             st.button("Copy", on_click=lambda i=i: copy_package(i), key=f"copy_{i}")
-        with col9:
+        with col11:
             st.button("Remove", on_click=lambda i=i: remove_package(i), key=f"remove_{i}")
 
     st.button("Add Package", on_click=add_package)
 
     return {"packages": st.session_state.packages}
 
+
 def common_questions():
     temp_details = st.session_state.get("temp_details", {})
 
     if not temp_details.get("dimensions_flatrack"):
-            temp_details["dimensions_flatrack"] = [{"weight": 0, "length": 0, "width": 0, "height": 0}]
+            temp_details["dimensions_flatrack"] = [{"weight": 0.0, "length": 0.0, " width": 0.0, "height": 0.0, 
+                                                    "weight_unit": "KG", "length_unit": "CM"}]
 
     container_types = temp_details.get("type_container", ["20' Dry Standard"])
     if not isinstance(container_types, list):
@@ -223,30 +270,45 @@ def common_questions():
 
     if any(tc in ["Flat Rack 20'", "Flat Rack 40'"] for tc in type_container):
 
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+
         with col1:
-                st.session_state.temp_details["dimensions_flatrack"][0]["weight"] = st.number_input(
-                    "Weight (KG)*", key="weight_0",
-                    value=st.session_state.temp_details["dimensions_flatrack"][0].get("weight", 0),
-                    step=1, min_value=0
-                )
+            st.session_state.temp_details["dimensions_flatrack"][0]["weight_unit"] = st.selectbox(
+                "Weight Unit", ["KG", "Ton", "Lbs"],
+                index=["KG", "Ton", "Lbs"].index(st.session_state.temp_details["dimensions_flatrack"][0].get("weight_unit", "KG")),
+                key="weight_unit_flatrack"
+            )
         with col2:
-            st.session_state.temp_details["dimensions_flatrack"][0]["length"] = st.number_input(
-                "Length (CM)*", key="length_0",
-                value=st.session_state.temp_details["dimensions_flatrack"][0].get("length", 0),
-                step=1, min_value=0
+            st.session_state.temp_details["dimensions_flatrack"][0]["weight"] = st.number_input(
+                "Weight*", key="weight_0",
+                value=float(st.session_state.temp_details["dimensions_flatrack"][0].get("weight", 0.0)),
+                step=0.01, min_value=0.0
             )
+
         with col3:
-            st.session_state.temp_details["dimensions_flatrack"][0]["width"] = st.number_input(
-                "Width (CM)*", key="width_0",
-                value=st.session_state.temp_details["dimensions_flatrack"][0].get("width", 0),
-                step=1, min_value=0
+            st.session_state.temp_details["dimensions_flatrack"][0]["length_unit"] = st.selectbox(
+                "Length Unit", ["CM", "M", "MM", "Inches"],
+                index=["CM", "M", "MM", "Inches"].index(st.session_state.temp_details["dimensions_flatrack"][0].get("length_unit", "CM")),
+                key="length_unit_flatrack"
             )
+        
         with col4:
+            st.session_state.temp_details["dimensions_flatrack"][0]["length"] = st.number_input(
+                "Length*", key="length_0",
+                value=float(st.session_state.temp_details["dimensions_flatrack"][0].get("length", 0.0)),
+                step=0.01, min_value=0.0
+            )
+        with col5:
+            st.session_state.temp_details["dimensions_flatrack"][0]["width"] = st.number_input(
+                "Width*", key="width_0",
+                value=float(st.session_state.temp_details["dimensions_flatrack"][0].get("width", 0.0)),
+                step=0.01, min_value=0.0
+            )
+        with col6:
             st.session_state.temp_details["dimensions_flatrack"][0]["height"] = st.number_input(
-                "Height (CM)*", key="height_0",
-                value=st.session_state.temp_details["dimensions_flatrack"][0].get("height", 0),
-                step=1, min_value=0
+                "Height*", key="height_0",
+                value=float(st.session_state.temp_details["dimensions_flatrack"][0].get("height", 0.0)),
+                step=0.01, min_value=0.0
             )
 
     col1, col2, col3, col4 = st.columns(4)
@@ -530,7 +592,7 @@ def questions_by_incoterm(incoterm, details, service, transport_type):
     delivery_address = details.get("delivery_address", None)
     zip_code_destination = details.get("zip_code_destination", None)
     insurance_required = details.get("insurance_required", False)
-    cargo_value = details.get("cargo_value", 0)
+    cargo_value = details.get("cargo_value", 0.0)
     hs_code = details.get("hs_code", None)
     customs_info = {}
     destination_cost = details.get("destination_cost", False)
@@ -557,7 +619,8 @@ def questions_by_incoterm(incoterm, details, service, transport_type):
             elif incoterm == "EXW":
                 delivery_address = st.text_input("Delivery Address", key="delivery_address", value=delivery_address)
             zip_code_destination = st.text_input("Zip Code City of Destination", key="zip_code_destination", value=zip_code_destination)
-            cargo_value = st.number_input("Cargo Value (USD)*", key="cargo_value", value=details.get("cargo_value", 0))
+            cargo_value = st.number_input("Cargo Value (USD)*", key="cargo_value", value=float(details.get("cargo_value", 0.0)),
+                                        step=0.01, min_value=0.0)
             customs_info = customs_questions(service, customs=True)
             
             destination_cost = st.checkbox("Quote surcharges at destination", key="destination_cost", value=details.get("destination_cost", False))
@@ -572,13 +635,15 @@ def questions_by_incoterm(incoterm, details, service, transport_type):
     insurance_required = st.checkbox("Insurance Required", key="insurance_required", value=insurance_required)
     if insurance_required:
         if incoterm not in ["EXW", "DDP", "DAP", "FCA"]:
-            cargo_value = st.number_input("Cargo Value (USD)*", key="cargo_value", value=details.get("cargo_value", 0))
+            cargo_value = st.number_input("Cargo Value (USD)*", key="cargo_value", value=float(details.get("cargo_value", 0)),
+                                        step=0.01, min_value=0.0)
             if not customs_origin:
                 insurance = insurance_questions()
                 details.update(insurance)
 
     if incoterm == "FCA" and insurance_required or customs_origin:
-        cargo_value = st.number_input("Cargo Value (USD)*", key="cargo_value", value=details.get("cargo_value", 0))
+        cargo_value = st.number_input("Cargo Value (USD)*", key="cargo_value", value=float(details.get("cargo_value", 0.0)),
+                                    step=0.01, min_value=0.0)
 
     details["destination_cost"] = destination_cost
 
@@ -651,8 +716,10 @@ def ground_transport():
     hs_code = st.text_input("HS Code", key="hs_code", value=temp_details.get("hs_code", ""))
     imo = imo_questions()
     temp_details.update(imo)
-    cargo_value = st.number_input("Cargo Value (USD)*", key="cargo_value", value=temp_details.get("cargo_value", 0))
-    weight = st.number_input("Weight*", key="weight", value=temp_details.get("weight", 0))
+    cargo_value = st.number_input("Cargo Value (USD)*", key="cargo_value", value=float(temp_details.get("cargo_value", 0.0)), 
+                                step=0.01, min_value=0.0)
+    weight = st.number_input("Total Weight*", key="weight", value=float(temp_details.get("weight", 0.0)), 
+                            step=0.01, min_value=0.0)
     
     temperature, dimensions_info = None, None
 
@@ -790,7 +857,8 @@ def customs_questions(service, customs=False):
         commodity = st.text_input("Commodity*", key="commodity", value=temp_details.get("commodity", ""))
         hs_code = st.text_input("HS Code*", key="hs_code", value=temp_details.get("hs_code", ""))
         imo = imo_questions()
-        cargo_value = st.number_input("Cargo Value (USD)*", key="cargo_value", value=temp_details.get("cargo_value", 0))
+        cargo_value = st.number_input("Cargo Value (USD)*", key="cargo_value", value=float(temp_details.get("cargo_value", 0)),
+                                    step=0.01, min_value=0.0)
 
         dimensions_info = dimensions()
         customs_data.update({
@@ -861,7 +929,7 @@ def validate_service_details(temp_details):
     if service == "International Freight":
         insurance_required = temp_details.get("insurance_required", False)
         if insurance_required:
-            cargo_value = temp_details.get("cargo_value", 0) or 0
+            cargo_value = temp_details.get("cargo_value", 0.0) or 0
             if cargo_value <= 0:
                 errors.append("Cargo value is required.")
 
@@ -891,13 +959,13 @@ def validate_service_details(temp_details):
                 else:
                     flatrack = dimensions_flatrack[0] 
 
-                    if flatrack.get("weight", 0) <= 0:
+                    if flatrack.get("weight", 0.0) <= 0:
                         errors.append("Weight must be greater than 0.")
-                    if flatrack.get("height", 0) <= 0:
+                    if flatrack.get("height", 0.0) <= 0:
                         errors.append("Height must be greater than 0.")
-                    if flatrack.get("length", 0) <= 0:
+                    if flatrack.get("length", 0.0) <= 0:
                         errors.append("Length must be greater than 0.")
-                    if flatrack.get("width", 0) <= 0:
+                    if flatrack.get("width", 0.0) <= 0:
                         errors.append("Width must be greater than 0.")
 
             positioning = temp_details.get("positioning", "")
@@ -928,35 +996,35 @@ def validate_service_details(temp_details):
                     for idx, package in enumerate(packages):
                         if package.get("quantity", 0) <= 0:
                             errors.append(f"The quantity of package {idx + 1} must be greater than 0.")
-                        if package.get("weight_lcl", 0) <= 0 and package.get("kilovolume", 0) <= 0:
+                        if package.get("weight_lcl", 0.0) <= 0 and package.get("kilovolume", 0) <= 0:
                             errors.append(f"The weight or kilovolume of package {idx + 1} must be greater than 0.")
-                        if package.get("weight_lcl", 0) > 0 and package.get("kilovolume", 0) > 0:
+                        if package.get("weight_lcl", 0.0) > 0 and package.get("kilovolume", 0) > 0:
                             continue
                         if (
-                            package.get("length", 0) <= 0 or 
-                            package.get("width", 0) <= 0 or 
-                            package.get("height", 0) <= 0
+                            package.get("length", 0.0) <= 0 or 
+                            package.get("width", 0.0) <= 0 or 
+                            package.get("height", 0.0) <= 0
                         ):
                             errors.append(f"The dimensions of package {idx + 1} must be greater than 0 if weight and kilovolume are not specified.")
                 else:
                     for idx, package in enumerate(packages):
                         if package.get("quantity", 0) <= 0:
                             errors.append(f"The quantity of package {idx + 1} must be greater than 0.")
-                        if package.get("weight_lcl", 0) <= 0 and package.get("volume", 0) <= 0:
+                        if package.get("weight_lcl", 0.0) <= 0 and package.get("volume", 0) <= 0:
                             errors.append(f"The weight or volume of package {idx + 1} must be greater than 0.")
-                        if package.get("weight_lcl", 0) > 0 and package.get("volume", 0) > 0:
+                        if package.get("weight_lcl", 0.0) > 0 and package.get("volume", 0) > 0:
                             continue
                         if (
-                            package.get("length", 0) <= 0 or 
-                            package.get("width", 0) <= 0 or 
-                            package.get("height", 0) <= 0
+                            package.get("length", 0.0) <= 0 or 
+                            package.get("width", 0.0) <= 0 or 
+                            package.get("height", 0.0) <= 0
                         ):
                             errors.append(f"The dimensions of package {idx + 1} must be greater than 0 if weight and volume are not specified.")
 
         incoterm = temp_details.get("incoterm", "")
         if incoterm in ["FCA", "EXW", "DDP", "DAP"]:
             hs_code = temp_details.get("hs_code", "")
-            cargo_value = temp_details.get("cargo_value", 0) or 0
+            cargo_value = temp_details.get("cargo_value", 0.0) or 0
             if cargo_value <= 0:
                 errors.append("Cargo value is required.")
             if not hs_code and incoterm != "DAP":
@@ -979,8 +1047,8 @@ def validate_service_details(temp_details):
         country_destination = temp_details.get("country_destination", "")
         city_origin = temp_details.get("city_origin", "")
         city_destination = temp_details.get("city_destination", "")
-        cargo_value = temp_details.get("cargo_value", 0)
-        weight = temp_details.get("weight", 0)
+        cargo_value = temp_details.get("cargo_value", 0.0)
+        weight = temp_details.get("weight", 0.0)
 
         if not country_origin:
             errors.append("Country of Origin is required.")
@@ -994,16 +1062,16 @@ def validate_service_details(temp_details):
             errors.append("Pick up address is required.")
         if not delivery_address:
             errors.append("Delivery address is required.")
-        if cargo_value <= 0:
+        if cargo_value <= 0.0:
             errors.append("Cargo value is required.")
-        if weight <= 0:
+        if weight <= 0.0:
             errors.append("Weight is required.")
 
     elif service == "Customs Brokerage":
         country_origin = temp_details.get("country_origin", [])
         country_destination = temp_details.get("country_destination", [])
         hs_code = temp_details.get("hs_code", "")
-        cargo_value = temp_details.get("cargo_value", 0)
+        cargo_value = temp_details.get("cargo_value", 0.0)
 
         if not country_origin:
             errors.append("Origin Country is required.")
