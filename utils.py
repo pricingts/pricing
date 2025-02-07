@@ -418,7 +418,7 @@ def imo_questions():
     temp_details = st.session_state["temp_details"]
 
     imo_cargo = st.checkbox(
-        "IMO", 
+        "**IMO**", 
         key="imo_cargo", 
         value=temp_details.get("imo_cargo", False)
     )
@@ -816,7 +816,7 @@ def lcl_questions(transport_type):
             )
 
     stackable = st.radio(
-        "Stackable*",
+        "**Stackable***",
         options=["Yes", "No"],
         index=0 if temp_details.get("stackable", "") else 1,
         key="stackable"
@@ -885,9 +885,11 @@ def customs_questions(service, customs=False):
     return customs_data
 
 def final_questions():
-    temp_details = st.session_state.get("temp_details", {})
 
-    final_comments = st.text_area("Final Comments", key="final_comments", value=temp_details.get("final_comments", ""))
+    if "final_comments" not in st.session_state:
+        st.session_state.final_comments = st.session_state.get("temp_details", {}).get("final_comments", "")
+
+    final_comments = st.text_area("Final Comments", key="final_comments")
 
     additional_documents = st.file_uploader("Attach Additional Documents", accept_multiple_files=True, key="additional_documents_files")
 
@@ -896,7 +898,7 @@ def final_questions():
         additional_documents_files = [save_file_locally(file) for file in additional_documents]
 
     return {
-        "final_comments": final_comments,
+        "final_comments": st.session_state.final_comments,
         "additional_documents_files": additional_documents_files
     }
 
