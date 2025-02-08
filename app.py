@@ -491,23 +491,26 @@ if st.session_state["completed"]:
                                         pallets_info = details.get("packages", [])
                                         transport_type = details.get("transport_type", "") 
 
-                                        unique_pallets = set() 
+                                        unique_pallets = set()
+                                        total_weight_all = 0 
 
                                         for i, p in enumerate(pallets_info):
                                             weight_unit = p.get("weight_unit", "KG") 
                                             length_unit = p.get("length_unit", "CM")
+                                            total_weight_all += p.get("total_weight", 0)
 
                                             pallet_str = (
                                                 f"Package {i + 1}: Type: {p['type_packaging']}, Quantity: {p['quantity']}, "
-                                                f"Weight: {p['weight_lcl']:.2f} {weight_unit}, "
+                                                f"Unit Weight: {p['weight_lcl']:.2f} {weight_unit}, Total Weight: {p['total_weight']:.2f} {weight_unit},"
                                                 f"Volume: {p.get('volume', 0):.2f} {'KVM' if transport_type == 'Air' else 'CBM'}, "
                                                 f"Dimensions: {p['length']:.2f} {length_unit} x {p['width']:.2f} {length_unit} x {p['height']:.2f} {length_unit}"
                                             )
-                                            unique_pallets.add(pallet_str) 
+                                            unique_pallets.add(pallet_str)
 
                                         if unique_pallets:
                                             grouped_record["info_pallets_str"].add("\n".join(sorted(unique_pallets)))
 
+                                        grouped_record["info_pallets_str"].add(f"Total weight of all packages: {total_weight_all:.2f} KG")
 
                                     # **5️⃣ Información de Flatrack**
                                     if "dimensions_flatrack" in details:
