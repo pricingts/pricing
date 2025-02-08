@@ -107,6 +107,8 @@ def dimensions():
 
     if "packages" not in st.session_state:
         st.session_state.packages = []
+    if "total_weight" not in st.session_state:
+        st.session_state["total_weight"] = 0.0
 
     def add_package():
         st.session_state.packages.append({
@@ -119,7 +121,8 @@ def dimensions():
             "volume": 0.0,
             "kilovolume": 0.0,
             "weight_unit": "KG",
-            "length_unit": "CM"
+            "length_unit": "CM",
+            "total_weight": 0.0
         })
 
     def remove_package(index):
@@ -172,7 +175,7 @@ def dimensions():
             )
         with col4:
             st.session_state.packages[i]["weight_lcl"] = st.number_input(
-                "Weight*", key=f"weight_lcl_{i}", 
+                "Weight per Unit*", key=f"weight_lcl_{i}", 
                 value=float(st.session_state.packages[i].get("weight_lcl", 0.0)), 
                 step=0.01, min_value=0.0
             )
@@ -206,12 +209,18 @@ def dimensions():
 
         # Conversión de valores a CM y KG
         weight_kg = st.session_state.packages[i]["weight_lcl"] * weight_conversion[st.session_state.packages[i]["weight_unit"]]
+        total_weight = weight_kg * st.session_state.packages[i]["quantity"]
+        st.session_state.packages[i]["total_weight"] = total_weight
+
         length_cm = st.session_state.packages[i]["length"] * length_conversion[st.session_state.packages[i]["length_unit"]]
         width_cm = st.session_state.packages[i]["width"] * length_conversion[st.session_state.packages[i]["length_unit"]]
         height_cm = st.session_state.packages[i]["height"] * length_conversion[st.session_state.packages[i]["length_unit"]]
 
+
         if length_cm > 0 and width_cm > 0 and height_cm > 0:
-            st.session_state.packages[i]["volume"] = (length_cm * width_cm * height_cm) / 1000000  # Convertir a m³
+            unit_volume = (length_cm * width_cm * height_cm) / 1000000  # Convertir a m³
+            total_volume = unit_volume * st.session_state.packages[i]["quantity"]
+            st.session_state.packages[i]["volume"] = total_volume
 
         with col9:
             if transport_type == "Air":
@@ -371,7 +380,7 @@ def handle_refrigerated_cargo(reefer_containers, incoterm):
     for cont_type in reefer_containers:
         if cont_type == "Reefer 40'":
             st.markdown(f"Details for {cont_type}")
-            reefer_types = ["Controlled Atmosphere", "Cold Treatment"]
+            reefer_types = ["Controlled Atmosphere", "Cold Treatment", "Operating Reefer"]
             default_reefer_type = temp_details.get(f"reefer_type_{cont_type}", "Controlled Atmosphere")
 
             reefer_cont_type = st.radio(
