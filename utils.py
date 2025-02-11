@@ -9,12 +9,10 @@ import pytz
 from datetime import datetime
 import json
 import os
-from copy import deepcopy
 import pandas as pd
 
 SERVICES_FILE = "services.json"
 TEMP_DIR = "temp_uploads"
-
 
 all_quotes_columns =[
     "request_id", "time", "commercial", "service", "client", "client_reference", "incoterm", "commodity", "hs_code", "transport_type", "modality", "routes_info", "country_origin", "country_destination", "pickup_address", "zip_code_origin", "delivery_address", "zip_code_destination",
@@ -64,6 +62,12 @@ def save_file_locally(file, temp_dir=TEMP_DIR):
 def load_csv(file):
     df = pd.read_csv(file)
     return df
+
+def save_csv(file, new_client):
+    file_exists = os.path.exists(file)
+    
+    with open(file, "a") as f:
+        f.write(f"{new_client}\n")
 
 def folder(request_id):
     if validate_shared_drive_folder(PARENT_FOLDER_ID):
@@ -216,7 +220,6 @@ def dimensions():
         width_cm = st.session_state.packages[i]["width"] * length_conversion[st.session_state.packages[i]["length_unit"]]
         height_cm = st.session_state.packages[i]["height"] * length_conversion[st.session_state.packages[i]["length_unit"]]
 
-
         if length_cm > 0 and width_cm > 0 and height_cm > 0:
             unit_volume = (length_cm * width_cm * height_cm) / 1000000  # Convertir a m³
             total_volume = unit_volume * st.session_state.packages[i]["quantity"]
@@ -224,7 +227,7 @@ def dimensions():
 
         with col9:
             if transport_type == "Air":
-                st.session_state.packages[i]["kilovolume"] = st.session_state.packages[i]["volume"] * 166.6  # KV
+                st.session_state.packages[i]["kilovolume"] = total_volume * 166.6  # KV
             
             if transport_type == "Air":
                 st.session_state.packages[i]["kilovolume"] = st.number_input(
@@ -273,7 +276,7 @@ def common_questions():
             "Flat Rack 20'",
             "Flat Rack 40'"
         ],
-        default=container_types, 
+        default=[], 
         key="type_container"
     )
 
@@ -1033,11 +1036,18 @@ def validate_service_details(temp_details):
                             errors.append(f"The dimensions of package {idx + 1} must be greater than 0 if weight and volume are not specified.")
 
         incoterm = temp_details.get("incoterm", "")
+        customs_origin = temp_details.get("customs_origin", False)
+        insurance_required = temp_details.get("insurance_required", False)
+
         if incoterm in ["FCA", "EXW", "DDP", "DAP"]:
             hs_code = temp_details.get("hs_code", "")
             cargo_value = temp_details.get("cargo_value", 0.0) or 0
-            if cargo_value <= 0:
+
+            if incoterm == "FCA" and (customs_origin or insurance_required) and cargo_value <= 0:
                 errors.append("Cargo value is required.")
+            elif incoterm in ["EXW", "DDP", "DAP"] and cargo_value <= 0:
+                errors.append("Cargo value is required.")
+
             if not hs_code and incoterm != "DAP":
                 errors.append("HS Code is required.")
 
@@ -1155,7 +1165,6 @@ def handle_add_service():
     save_services(st.session_state["services"])
     st.session_state["temp_details"] = {}
     change_page("requested_services")
-
 
 def change_page(new_page):
     st.session_state["page"] = new_page
@@ -1349,7 +1358,7 @@ def upload_all_files_to_google_drive(folder_id, drive_service):
         st.error(f"Error al subir archivos a Google Drive: {e}")
 
 def load_existing_ids_from_sheets():
-    sheet_name = "Duration Time Quotation" #cambiar a Duration Time Quotation
+    sheet_name = "Duration Time Quotation" 
     while True: 
         try:
             sheet = client_gcp.open_by_key(time_sheet_id)
