@@ -1181,7 +1181,7 @@ def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
     attempts = 0
     while attempts < max_attempts:
         try:
-            save_data_to_google_sheets(dataframe, sheet_id, "TEST")
+            save_data_to_google_sheets(dataframe, sheet_id, "All Quotes")
 
             if is_ground_usa:
                 save_data_to_google_sheets(dataframe, sheet_id, "Ground Quotations")
