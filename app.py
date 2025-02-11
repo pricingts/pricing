@@ -8,6 +8,7 @@ import pytz
 from datetime import datetime
 import random
 import string
+import os
 
 sheet_id = st.secrets["general"]["sheet_id"]
 DRIVE_ID = st.secrets["general"]["drive_id"]
@@ -59,7 +60,8 @@ def initialize_state():
         "final_comments": "",
         "initialized": True,
         "ports_csv": None,
-        "cities_csv": None
+        "cities_csv": None,
+        "clients_list": []
     }
     for key, value in default_values.items():
         if key not in st.session_state:
@@ -81,6 +83,17 @@ def initialize_state():
             st.session_state["cities_csv"] = load_csv("cities_world.csv")
         except Exception as e:
             st.error("Error loading CSV data. Please check the file path or format.")
+
+    if not st.session_state.get("clients_list"):
+        try:
+            df_clients = load_csv("customers.csv")
+            if "Cliente" in df_clients.columns:
+                st.session_state["clients_list"] = df_clients["Cliente"].dropna().unique().tolist()
+            else:
+                st.error("Error: 'Cliente' column not found in the Excel file.")
+        except Exception as e:
+            st.error(f"Error loading Clients Data: {e}")
+            st.session_state["clients_list"] = []
 
     if "uploaded_files" not in st.session_state:
         st.session_state.uploaded_files = []
@@ -109,6 +122,7 @@ def generate_request_id():
     return unique_id
 
 #------------------------------------APP----------------------------------------
+customers_file = "customers.csv"
 col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
@@ -154,16 +168,53 @@ if st.session_state["completed"]:
         sales_rep = st.session_state.get("sales_rep", "-- Sales Representative --")
         st.subheader(f"Hello, {sales_rep}!")
 
-        client = st.text_input("Who is your client?*", key="client_input")
+        if "clients_list" not in st.session_state or not st.session_state["clients_list"]:
+            try:
+                df_clients = load_csv("customers.csv")
+                if "Cliente" in df_clients.columns:
+                    clients_list = df_clients["Cliente"].dropna().astype(str).unique().tolist()
+                    st.session_state["clients_list"] = clients_list
+                else:
+                    st.session_state["clients_list"] = []
+            except Exception as e:
+                st.error(f"⚠️ Error cargando el archivo customers.csv: {e}")
+                st.session_state["clients_list"] = []
+
+        clients_list = st.session_state.get("clients_list", [])
+
+        client = st.selectbox("Who is your client?*", [" "] + clients_list, key="client_input")
         reference = st.text_input("Client reference", key="reference")
 
+        #if client == "+ Add New":
+        #    st.write("### Add a New Client")
+        #    new_client_name = st.text_input("Enter the client's name:", key="new_client_name")
+
+        #    if st.button("Save Client"):
+        #        if new_client_name:
+        #            if new_client_name not in st.session_state["clients_list"]:
+        #                st.session_state["client"] = new_client_name 
+        #                st.success(f"✅ Client '{new_client_name}' saved!")
+        #            else:
+        #                st.warning(f"⚠️ Client '{new_client_name}' already exists in the list.")
+        #        else:
+        #            st.error("⚠️ Please enter a valid client name.")
+
+
         def handle_next_client():
-            if not client or client.strip() == "":
-                st.warning("Please enter a valid client name before proceeding.")
-            else:
-                st.session_state["client"] = client
+            selected_client = st.session_state.get("client_input", "").strip()
+            if selected_client == " ":
+                st.warning("Please select a valid client before proceeding.")
+                return
+
+            if selected_client:
+                st.session_state["client"] = selected_client
+
+            if "client" in st.session_state and st.session_state["client"]:
                 st.session_state["client_reference"] = reference
-                change_page("add_services")
+                st.session_state["page"] = "add_services"
+            else:
+                st.warning("Please enter or select a valid client before proceeding.")
+
 
         col1, col2 = st.columns([0.04, 0.3])
         with col1:
@@ -391,11 +442,30 @@ if st.session_state["completed"]:
                         services = load_services()
                         if services:
                             try:
+                                if "folder_request_id" not in st.session_state:
+                                    st.session_state["folder_request_id"] = None
+
                                 if "folder_id" not in st.session_state or st.session_state["folder_request_id"] != request_id:
-                                    folder_id, folder_link = folder(request_id)
-                                    st.session_state["folder_id"] = folder_id
-                                    st.session_state["folder_link"] = folder_link
-                                    st.session_state["folder_request_id"] = request_id
+                                    if st.session_state["folder_request_id"] is None:
+                                        folder_id, folder_link = folder(request_id)
+                                        st.session_state["folder_id"] = folder_id
+                                        st.session_state["folder_link"] = folder_link
+                                        st.session_state["folder_request_id"] = request_id
+
+                                        st.session_state["end_time"] = datetime.now(colombia_timezone)
+                                        end_time = st.session_state["end_time"]
+                                        end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S')
+
+                                        if st.session_state["start_time"] and st.session_state["end_time"]:
+                                            duration = (end_time - st.session_state["start_time"]).total_seconds()
+                                        else:
+                                            st.error("Start time or end time is missing. Cannot calculate duration.")
+                                            return
+                                        log_time(st.session_state["start_time"], end_time, duration, st.session_state["request_id"])
+                                        st.session_state["submitted"] = True
+                                    else:
+                                        folder_id = st.session_state["folder_id"]
+                                        folder_link = st.session_state["folder_link"]
 
                                 folder_id = st.session_state.get("folder_id", "No folder created")
 
@@ -403,22 +473,18 @@ if st.session_state["completed"]:
                                     st.error("Failed to create or retrieve folder. Aborting finalization.")
                                     return
 
-                                st.session_state["end_time"] = datetime.now(colombia_timezone)
-                                end_time = st.session_state["end_time"]
-
-                                if st.session_state["start_time"] and st.session_state["end_time"]:
-                                    duration = (end_time - st.session_state["start_time"]).total_seconds()
-                                else:
-                                    st.error("Start time or end time is missing. Cannot calculate duration.")
-                                    return
-
-                                end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S')
-                                log_time(st.session_state["start_time"], end_time, duration, st.session_state["request_id"])
 
                                 commercial = st.session_state.get("sales_rep", "Unknown")
                                 client = st.session_state["client"]
                                 client_reference = st.session_state.get("client_reference", "N/A")
                                 folder_link = st.session_state.get("folder_link", "N/A")
+
+                                #if client and client not in st.session_state["clients_list"]:
+                                #    st.session_state["clients_list"].append(client)
+                                #    df_new_client = pd.DataFrame({"Cliente": [client]})
+                                #    save_csv(customers_file, df_new_client)
+                                    
+                                #    st.success(f"✅ Cliente '{client}' guardado correctamente en {customers_file}.")
 
                                 grouped_record = {
                                     "time": end_time_str,
@@ -620,6 +686,7 @@ if st.session_state["completed"]:
 
                             except Exception as e:
                                 st.error(f"An error occurred: {str(e)}")
+                                st.session_state["submitted"] = False
 
                         else:
                             st.warning("No services have been added to finalize the quotation.")
