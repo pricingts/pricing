@@ -228,14 +228,28 @@ def dimensions():
 
         with col9:
             if transport_type == "Air":
-                st.session_state.packages[i]["kilovolume"] = total_volume * 166.6 if total_volume else 0  #KV
-            
-            if transport_type == "Air":
-                st.session_state.packages[i]["kilovolume"] = st.number_input(
-                    "Kilovolume (KVM)*", key=f"kilovolume_{i}", 
-                    value=float(st.session_state.packages[i].get("kilovolume", 0.0)), 
-                    step=0.01, min_value=0.0
-                )
+                calculated_kvm = total_volume * 166.6 if total_volume > 0 else 0 
+
+                if total_volume > 0:
+                    st.session_state.packages[i]["kilovolume"] = calculated_kvm
+                    st.number_input(
+                        "Kilovolume (KVM)*",
+                        key=f"kilovolume_{i}",
+                        value=calculated_kvm,
+                        step=0.01,
+                        min_value=0.0,
+                        disabled=True
+                    )
+
+                else:
+                    st.session_state.packages[i]["kilovolume"] = st.number_input(
+                        "Kilovolume (KVM)*",
+                        key=f"kilovolume_{i}",
+                        value=st.session_state.packages[i].get("kilovolume", 0.0),
+                        step=0.01,
+                        min_value=0.0
+                    )
+
             else:
                 st.session_state.packages[i]["volume"] = st.number_input(
                     "Volume (CBM)*", key=f"volume_{i}", 
@@ -922,7 +936,7 @@ def validate_service_details(temp_details):
         return errors
 
     service = temp_details.get("service", "")
-    modality = temp_details.get("modality")
+    modality = temp_details.get("modality", "")
     hs_code = temp_details.get("hs_code", "")
     commodity = temp_details.get("commodity")
     imo = temp_details.get("imo_cargo", False)
@@ -1002,10 +1016,10 @@ def validate_service_details(temp_details):
                 if not ts_files:
                     errors.append("Technical Sheet is required.")
 
-        if modality == "LCL":
+        elif modality == "LCL" or transport_type == "Air":
             packages = temp_details.get("packages", [])
             if not packages:
-                errors.append("At least one package is required for LCL modality.")
+                errors.append("At least one package is required.")
             else:
                 if transport_type == "Air":
                     for idx, package in enumerate(packages):
@@ -1402,6 +1416,31 @@ def load_existing_ids_from_sheets():
 
         except Exception as e:
             st.error(f"Error while loading IDs from Google Sheets: {e}. Retrying...")
+
+@st.cache_data(ttl=3600)
+def load_clients():
+    sheet_name = "clientes"
+    
+    try:
+        sheet = client_gcp.open_by_key(time_sheet_id)
+        worksheet_list = [ws.title for ws in sheet.worksheets()]
+        
+        if sheet_name not in worksheet_list:
+            return []
+
+        worksheet = sheet.worksheet(sheet_name)
+        clientes = worksheet.col_values(1)
+
+        return clientes[1:]
+
+    except gspread.exceptions.SpreadsheetNotFound:
+        st.error("No se encontró la hoja de cálculo con el ID proporcionado.")
+    except gspread.exceptions.WorksheetNotFound:
+        st.error(f"No se encontró la pestaña '{sheet_name}' en la hoja de cálculo.")
+    except Exception as e:
+        st.error(f"Error al cargar los clientes desde Google Sheets: {e}")
+    
+    return []
 
 def go_back():
     navigation_flow = [
