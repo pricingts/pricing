@@ -84,15 +84,12 @@ def initialize_state():
         except Exception as e:
             st.error("Error loading CSV data. Please check the file path or format.")
 
-    if not st.session_state.get("clients_list"):
+    if "clients_list" not in st.session_state or not st.session_state["clients_list"]:
         try:
-            df_clients = load_csv("customers.csv")
-            if "Cliente" in df_clients.columns:
-                st.session_state["clients_list"] = df_clients["Cliente"].dropna().unique().tolist()
-            else:
-                st.error("Error: 'Cliente' column not found in the Excel file.")
+            client_data = load_clients()
+            st.session_state["clients_list"] = client_data if client_data else []
         except Exception as e:
-            st.error(f"Error loading Clients Data: {e}")
+            st.error(f"Error al cargar la lista de clientes: {e}")
             st.session_state["clients_list"] = []
 
     if "uploaded_files" not in st.session_state:
@@ -170,50 +167,55 @@ if st.session_state["completed"]:
 
         if "clients_list" not in st.session_state or not st.session_state["clients_list"]:
             try:
-                df_clients = load_csv("customers.csv")
-                if "Cliente" in df_clients.columns:
-                    clients_list = df_clients["Cliente"].dropna().astype(str).unique().tolist()
-                    st.session_state["clients_list"] = clients_list
-                else:
-                    st.session_state["clients_list"] = []
+                clients_list = load_clients() 
+                st.session_state["clients_list"] = clients_list if clients_list else []
             except Exception as e:
-                st.error(f"⚠️ Error cargando el archivo customers.csv: {e}")
+                st.error(f"⚠️ Error cargando la lista de clientes desde Google Sheets: {e}")
                 st.session_state["clients_list"] = []
+
 
         clients_list = st.session_state.get("clients_list", [])
 
-        client = st.selectbox("Who is your client?*", [" "] + clients_list, key="client_input")
+        client = st.selectbox("Who is your client?*", [" "] + ["+ Add New"] + clients_list, key="client_input")
         reference = st.text_input("Client reference", key="reference")
 
-        #if client == "+ Add New":
-        #    st.write("### Add a New Client")
-        #    new_client_name = st.text_input("Enter the client's name:", key="new_client_name")
+        new_client_saved = st.session_state.get("new_client_saved", False)
 
-        #    if st.button("Save Client"):
-        #        if new_client_name:
-        #            if new_client_name not in st.session_state["clients_list"]:
-        #                st.session_state["client"] = new_client_name 
-        #                st.success(f"✅ Client '{new_client_name}' saved!")
-        #            else:
-        #                st.warning(f"⚠️ Client '{new_client_name}' already exists in the list.")
-        #        else:
-        #            st.error("⚠️ Please enter a valid client name.")
+        if client == "+ Add New":
+            st.write("### Add a New Client")
+            new_client_name = st.text_input("Enter the client's name:", key="new_client_name")
+
+            if st.button("Save Client"):
+                if new_client_name:
+                    if new_client_name not in st.session_state["clients_list"]:
+                        st.session_state["client"] = new_client_name
+                        st.session_state["new_client_saved"] = True
+                        st.success(f"✅ Client '{new_client_name}' saved!")
+                    else:
+                        st.warning(f"⚠️ Client '{new_client_name}' already exists in the list.")
+                else:
+                    st.error("⚠️ Please enter a valid client name.")
 
         def handle_next_client():
             selected_client = st.session_state.get("client_input", "").strip()
-            if selected_client == " ":
-                st.warning("Please select a valid client before proceeding.")
-                return
 
-            if selected_client:
-                st.session_state["client"] = selected_client
+            if selected_client == "+ Add New":
+                if not st.session_state.get("new_client_saved", False):
+                    st.warning("Please save the new client before proceeding.")
+                    return
+                if not new_client_name.strip():
+                    st.warning("Please enter a valid client name before proceeding.")
+                    return
+                st.session_state["client"] = new_client_name
+
+            elif selected_client and selected_client != " ":
+                st.session_state["client"] = selected_client 
 
             if "client" in st.session_state and st.session_state["client"]:
                 st.session_state["client_reference"] = reference
                 st.session_state["page"] = "add_services"
             else:
                 st.warning("Please enter or select a valid client before proceeding.")
-
 
         col1, col2 = st.columns([0.04, 0.3])
         with col1:
@@ -248,7 +250,6 @@ if st.session_state["completed"]:
 
         prefill_temp_details()
         temp_details = st.session_state["temp_details"]
-
     #------------------------------------INTERNATIONAL FREIGHT----------------------------
         if service == "International Freight":
             st.subheader("International Freight")
@@ -257,11 +258,11 @@ if st.session_state["completed"]:
             st.session_state["temp_details"]["transport_type"] = transport_type
 
             if transport_type == "Air":
-                modality_options = ["LCL"]
+                modality_options = []
             else:
                 modality_options = ["FCL", "LCL"]
 
-            modality = st.selectbox("Modality*", modality_options, key="modality")
+            modality = st.selectbox("Modality*", modality_options, key="modality_op")
             st.session_state["temp_details"]["modality"] = modality
 
             if "cargo_details_expander" not in st.session_state:
@@ -300,7 +301,7 @@ if st.session_state["completed"]:
                         st.markdown("**-----Refrigerated Cargo Details-----**")
                         refrigerated_cargo = handle_refrigerated_cargo(reefer_containers, incoterm)
                         st.session_state["temp_details"].update(refrigerated_cargo)
-                if modality == "LCL":
+                if modality == "LCL" or transport_type == "Air":
                     lcl_details = lcl_questions(transport_type)
                     st.session_state["temp_details"].update(lcl_details)
 
@@ -485,12 +486,13 @@ if st.session_state["completed"]:
                                 client_reference = st.session_state.get("client_reference", "N/A")
                                 folder_link = st.session_state.get("folder_link", "N/A")
 
-                                #if client and client not in st.session_state["clients_list"]:
-                                #    st.session_state["clients_list"].append(client)
-                                #    df_new_client = pd.DataFrame({"Cliente": [client]})
-                                #    save_csv(customers_file, df_new_client)
-                                    
-                                #    st.success(f"✅ Cliente '{client}' guardado correctamente en {customers_file}.")
+                                if client and client not in st.session_state["clients_list"]:
+                                    sheet = client_gcp.open_by_key(time_sheet_id)
+                                    worksheet = sheet.worksheet("clientes")
+                                    worksheet.append_row([client])
+                                    st.session_state["clients_list"].append(client)
+                                    st.success(f"✅ Client '{client}' successfully saved")
+                                    load_clients.clear()
 
                                 grouped_record = {
                                     "time": end_time_str,
@@ -517,9 +519,9 @@ if st.session_state["completed"]:
 
                                     if "type_container" in details:
                                         if isinstance(details["type_container"], list):
-                                            grouped_record["type_container"].update(details["type_container"])  # Agregar múltiples valores únicos
+                                            grouped_record["type_container"].update(details["type_container"])
                                         else:
-                                            grouped_record["type_container"].add(details["type_container"])  # Agregar un solo valor único
+                                            grouped_record["type_container"].add(details["type_container"]) 
 
                                     # **1️⃣ Características del Contenedor**
                                     characteristics = []
@@ -563,15 +565,23 @@ if st.session_state["completed"]:
                                         unique_pallets = set()
                                         total_weight_all = 0 
 
+
                                         for i, p in enumerate(pallets_info):
                                             weight_unit = p.get("weight_unit", "KG") 
                                             length_unit = p.get("length_unit", "CM")
                                             total_weight_all += p.get("total_weight", 0)
 
+                                            if transport_type == "Air":
+                                                volume_value = p.get("kilovolume", 0)
+                                                volume_label = "KVM"
+                                            else:
+                                                volume_value = p.get("volume", 0)
+                                                volume_label = "CBM"
+
                                             pallet_str = (
                                                 f"Package {i + 1}: Type: {p['type_packaging']}, Quantity: {p['quantity']}, "
                                                 f"Unit Weight: {p['weight_lcl']:.2f} {weight_unit}, Total Weight: {p['total_weight']:.2f} {weight_unit},"
-                                                f"Volume: {p.get('volume', 0):.2f} {'KVM' if transport_type == 'Air' else 'CBM'}, "
+                                                f"Volume: {volume_value:.2f} {volume_label}, "
                                                 f"Dimensions: {p['length']:.2f} {length_unit} x {p['width']:.2f} {length_unit} x {p['height']:.2f} {length_unit}"
                                             )
                                             unique_pallets.add(pallet_str)
