@@ -147,7 +147,7 @@ if st.session_state["completed"]:
 
         sales_rep = st.selectbox(
             "Please select a Sales Representative*",
-            ["-- Sales Representative --", "Pedro Bruges", "Andrés Consuegra", "Ivan Zuluaga", "Sharon Zuñiga",
+            ["-- Sales Representative --", "Pedro Luis Bruges", "Andrés Consuegra", "Ivan Zuluaga", "Sharon Zuñiga",
             "Johnny Farah", "Felipe Hoyos", "Jorge Sánchez",
             "Irina Paternina", "Stephanie Bruges"],
             key="commercial"
@@ -198,7 +198,6 @@ if st.session_state["completed"]:
         #                st.warning(f"⚠️ Client '{new_client_name}' already exists in the list.")
         #        else:
         #            st.error("⚠️ Please enter a valid client name.")
-
 
         def handle_next_client():
             selected_client = st.session_state.get("client_input", "").strip()
@@ -453,14 +452,21 @@ if st.session_state["completed"]:
                                         st.session_state["folder_request_id"] = request_id
 
                                         st.session_state["end_time"] = datetime.now(colombia_timezone)
-                                        end_time = st.session_state["end_time"]
-                                        end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S')
-
-                                        if st.session_state["start_time"] and st.session_state["end_time"]:
-                                            duration = (end_time - st.session_state["start_time"]).total_seconds()
+                                        end_time = st.session_state.get("end_time", None)
+                                        if end_time is not None:
+                                            end_time_str = end_time.strftime('%Y-%m-%d %H:%M:%S')
                                         else:
-                                            st.error("Start time or end time is missing. Cannot calculate duration.")
+                                            st.error("Error: 'end_time' no fue asignado correctamente.")
                                             return
+
+                                        # ✅ Asegurar que 'start_time' existe antes de calcular la duración
+                                        start_time = st.session_state.get("start_time", None)
+                                        if start_time and end_time:
+                                            duration = (end_time - start_time).total_seconds()
+                                        else:
+                                            st.error("Error: 'start_time' o 'end_time' no están definidos. No se puede calcular la duración.")
+                                            return
+
                                         log_time(st.session_state["start_time"], end_time, duration, st.session_state["request_id"])
                                         st.session_state["submitted"] = True
                                     else:
@@ -514,9 +520,6 @@ if st.session_state["completed"]:
                                             grouped_record["type_container"].update(details["type_container"])  # Agregar múltiples valores únicos
                                         else:
                                             grouped_record["type_container"].add(details["type_container"])  # Agregar un solo valor único
-
-                                    # Convertir el set en una lista y unir los valores con saltos de línea
-                                    grouped_record["type_container"] = "\n".join(sorted(grouped_record["type_container"]))
 
                                     # **1️⃣ Características del Contenedor**
                                     characteristics = []
@@ -654,7 +657,7 @@ if st.session_state["completed"]:
                                             all_details[key] = {str(value)}
 
                                 # **8️⃣ Convertir sets a cadenas separadas por saltos de línea**
-                                for key in ["service", "container_characteristics", "imo", "routes_info", "info_pallets_str", "info_flatrack"]:
+                                for key in ["service", "container_characteristics", "imo", "routes_info", "info_pallets_str", "info_flatrack", "type_container"]:
                                     grouped_record[key] = "\n".join(sorted(grouped_record[key])) if grouped_record[key] else ""
 
                                 for key, value_set in all_details.items():

@@ -220,6 +220,7 @@ def dimensions():
         width_cm = st.session_state.packages[i]["width"] * length_conversion[st.session_state.packages[i]["length_unit"]]
         height_cm = st.session_state.packages[i]["height"] * length_conversion[st.session_state.packages[i]["length_unit"]]
 
+        total_volume = 0
         if length_cm > 0 and width_cm > 0 and height_cm > 0:
             unit_volume = (length_cm * width_cm * height_cm) / 1000000  # Convertir a m³
             total_volume = unit_volume * st.session_state.packages[i]["quantity"]
@@ -227,7 +228,7 @@ def dimensions():
 
         with col9:
             if transport_type == "Air":
-                st.session_state.packages[i]["kilovolume"] = total_volume * 166.6  # KV
+                st.session_state.packages[i]["kilovolume"] = total_volume * 166.6 if total_volume else 0  #KV
             
             if transport_type == "Air":
                 st.session_state.packages[i]["kilovolume"] = st.number_input(
@@ -1170,9 +1171,32 @@ def change_page(new_page):
     st.session_state["page"] = new_page
 
 def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
-    sheet_name = "All Quotes"  #RECORDAR SIEMPRE CAMBIAR A All Quotes CUANDO SE VAYA A HACER COMMIT
-    attempts = 0
 
+    is_ground_usa = (
+        (dataframe["service"].str.contains("Ground Transportation", na=False)) &
+        (dataframe["country_origin"] == "United states") &
+        (dataframe["country_destination"] == "United states")
+    ).any() 
+
+    attempts = 0
+    while attempts < max_attempts:
+        try:
+            save_data_to_google_sheets(dataframe, sheet_id, "TEST")
+
+            if is_ground_usa:
+                save_data_to_google_sheets(dataframe, sheet_id, "Ground Quotations")
+
+            return 
+
+        except Exception as e:
+            attempts += 1
+            st.error(f"Intento {attempts}/{max_attempts}: Error al guardar en Google Sheets: {e}")
+            if attempts == max_attempts:
+                st.error("Se alcanzó el máximo de intentos. No se pudo guardar la cotización.")
+                raise e
+
+def save_data_to_google_sheets(dataframe, sheet_id, sheet_name, max_attempts=5):
+    attempts = 0
     while attempts < max_attempts:
         try:
             sheet = client_gcp.open_by_key(sheet_id)
@@ -1180,26 +1204,25 @@ def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
             try:
                 worksheet = sheet.worksheet(sheet_name)
                 if worksheet.row_count == 0:
-                    worksheet.append_row([col.upper() for col in all_quotes_columns])
+                    worksheet.append_row([col.upper() for col in dataframe.columns])
 
             except gspread.exceptions.WorksheetNotFound:
                 worksheet = sheet.add_worksheet(title=sheet_name, rows="10000", cols="50")
-                worksheet.append_row([col.upper() for col in all_quotes_columns])
-
-            dataframe = dataframe.reindex(columns=all_quotes_columns, fill_value="")
+                worksheet.append_row([col.upper() for col in dataframe.columns])
 
             dataframe.columns = dataframe.columns.str.upper()
             new_data = dataframe.fillna("").values.tolist()
             worksheet.append_rows(new_data, table_range="A2")
-            
+
             return
 
         except Exception as e:
             attempts += 1
-            st.error(f"Attempt {attempts}/{max_attempts}: Failed to save data to Google Sheets: {e}")
+            st.error(f"Intento {attempts}/{max_attempts}: Error al guardar en Google Sheets ({sheet_name}): {e}")
             if attempts == max_attempts:
-                st.error("Maximum retry attempts reached. Unable to save data.")
+                st.error(f"Se alcanzó el máximo de intentos. No se pudo guardar la cotización en {sheet_name}.")
                 raise e
+
 
 def validate_shared_drive_folder(parent_folder_id):
     try:
