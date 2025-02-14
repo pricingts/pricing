@@ -1214,7 +1214,7 @@ def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
         (dataframe["service"].str.contains("Ground Transportation", na=False)) &
         dataframe["country_origin"].str.lower().str.strip().eq("united states") &
         dataframe["country_destination"].str.lower().str.strip().eq("united states")
-    ).any() 
+    ).any()
 
     attempts = 0
     while attempts < max_attempts:
