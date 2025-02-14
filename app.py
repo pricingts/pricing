@@ -557,7 +557,7 @@ if st.session_state["completed"]:
                                                 grouped_record["routes_info"].add(
                                                     f"Route {i + 1}: {r['country_origin']} ({r['port_origin']}) → {r['country_destination']} ({r['port_destination']})"
                                                 )
-                                    
+                                                print(grouped_record["routes_info"])
 
                                     # **4️⃣ Información de Paquetes**
                                     if "packages" in details:
@@ -649,7 +649,9 @@ if st.session_state["completed"]:
                                             grouped_record["addresses"] = ""
                                             grouped_record["country_origin"] = ""
                                             grouped_record["country_destination"] = ""
-
+                                    else:
+                                        grouped_record["ground_routes"] = ""
+                                        grouped_record["addresses"] = ""
 
                                     # **6️⃣ Reefer Details (Freight & Ground Refrigerado)**
                                     reefer_containers = ["Reefer 20'", "Reefer 40'"]
@@ -721,6 +723,7 @@ if st.session_state["completed"]:
 
                                 # **9️⃣ Crear DataFrame y guardar**
                                 new_df = pd.DataFrame([grouped_record])
+
                                 new_df = new_df.reindex(columns=all_quotes_columns, fill_value="")
 
                                 st.session_state["df_all_quotes"] = pd.concat(
