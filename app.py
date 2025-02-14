@@ -35,7 +35,6 @@ drive_service = build('drive', 'v3', credentials=drive_creds)
 client_gcp = gspread.authorize(sheets_creds)
 colombia_timezone = pytz.timezone('America/Bogota')
 
-
 #--------------------------------------UTILITY FUNCTIONS--------------------------------
 @st.cache_data(ttl=3600)
 def clear_temp_directory():
@@ -51,10 +50,10 @@ def initialize_state():
         "client": None,
         "client_reference": None,
         "completed": True,
-        "start_time": datetime.now(colombia_timezone),
+        "start_time": None,
         "end_time": None,
         "uploaded_files": {},
-        "temp_details": {"routes": [], "packages": [], "dimensions_flatrack": []},
+        "temp_details": {"routes": [], "packages": [], "dimensions_flatrack": [], "ground_routes": []},
         "generated_ids": set(),
         "request_id": None,
         "final_comments": "",
@@ -130,11 +129,6 @@ if "initialized" not in st.session_state or not st.session_state["initialized"]:
 
 if st.session_state["completed"]:
 
-    st.session_state["start_time"] = datetime.now(colombia_timezone)
-
-    if st.session_state.get("start_time") is None:
-        st.session_state["start_time"] = datetime.now(colombia_timezone)
-    
     if st.session_state.get("start_time") is None:
         st.session_state["start_time"] = datetime.now(colombia_timezone)
 
@@ -480,7 +474,6 @@ if st.session_state["completed"]:
                                     st.error("Failed to create or retrieve folder. Aborting finalization.")
                                     return
 
-
                                 commercial = st.session_state.get("sales_rep", "Unknown")
                                 client = st.session_state["client"]
                                 client_reference = st.session_state.get("client_reference", "N/A")
@@ -508,7 +501,15 @@ if st.session_state["completed"]:
                                     "info_flatrack": set(),
                                     "info_pallets_str": set(),
                                     "reefer_details": [],
-                                    "additional_costs": []
+                                    "additional_costs": [],
+                                    "ground_routes": [],     
+                                    "addresses_ground": [],   
+                                    "country_origin": "",
+                                    "country_destination": "",
+                                    "pickup_address": "",
+                                    "delivery_address": "",
+                                    "zip_code_origin": "",
+                                    "zip_code_destination": ""
                                 }
 
                                 all_details = {}
@@ -556,6 +557,7 @@ if st.session_state["completed"]:
                                                 grouped_record["routes_info"].add(
                                                     f"Route {i + 1}: {r['country_origin']} ({r['port_origin']}) → {r['country_destination']} ({r['port_destination']})"
                                                 )
+                                    
 
                                     # **4️⃣ Información de Paquetes**
                                     if "packages" in details:
@@ -564,7 +566,6 @@ if st.session_state["completed"]:
 
                                         unique_pallets = set()
                                         total_weight_all = 0 
-
 
                                         for i, p in enumerate(pallets_info):
                                             weight_unit = p.get("weight_unit", "KG") 
@@ -604,6 +605,51 @@ if st.session_state["completed"]:
                                             grouped_record["info_flatrack"].add(flatrack_str)
                                         else:
                                             grouped_record["info_flatrack"].add("")
+                                    
+                                    if service.get("service", "").strip().lower() == "international freight":
+                                        grouped_record["pickup_address"] = details.get("pickup_address", "N/A")
+                                        grouped_record["delivery_address"] = details.get("delivery_address", "N/A")
+                                        grouped_record["zip_code_origin"] = details.get("zip_code_origin", "N/A")
+                                        grouped_record["zip_code_destination"] = details.get("zip_code_destination", "N/A")
+
+                                    # ** GROUND ROUTES ***
+                                    if service.get("service", "").strip().lower() == "ground transportation":
+                                        ground_routes = details.get("ground_routes", [])
+
+                                        if ground_routes:
+                                            ground_routes_list = []
+                                            addresses_list = []
+
+                                            first_route = ground_routes[0] if ground_routes else {}
+
+                                            grouped_record["country_origin"] = first_route.get("country_origin", "").strip()
+                                            grouped_record["country_destination"] = first_route.get("country_destination", "").strip()
+
+                                            for idx, route in enumerate(ground_routes, start=1):
+                                                country_origin = route.get("country_origin", "").strip()
+                                                city_origin = route.get("city_origin", "").strip()
+                                                pickup_address = route.get("pickup_address", "").strip()
+                                                zip_code_origin = route.get("zip_code_origin", "").strip()
+                                                country_destination = route.get("country_destination", "").strip()
+                                                city_destination = route.get("city_destination", "").strip()
+                                                delivery_address = route.get("delivery_address", "").strip()
+                                                zip_code_destination = route.get("zip_code_destination", "").strip()
+
+                                                if city_origin and country_origin and city_destination and country_destination:
+                                                    ground_routes_list.append(f"Route {idx}: {city_origin} ({country_origin}) → {city_destination} ({country_destination})")
+
+                                                if pickup_address and zip_code_origin and delivery_address and zip_code_destination:
+                                                    addresses_list.append(f"Address {idx}: {pickup_address} ({zip_code_origin}) → {delivery_address} ({zip_code_destination})")
+
+                                            grouped_record["ground_routes"] = str("\n".join(ground_routes_list)) if ground_routes_list else ""
+                                            grouped_record["addresses"] = "\n".join(addresses_list) if addresses_list else ""
+
+                                        else:
+                                            grouped_record["ground_routes"] = ""
+                                            grouped_record["addresses"] = ""
+                                            grouped_record["country_origin"] = ""
+                                            grouped_record["country_destination"] = ""
+
 
                                     # **6️⃣ Reefer Details (Freight & Ground Refrigerado)**
                                     reefer_containers = ["Reefer 20'", "Reefer 40'"]
@@ -654,7 +700,7 @@ if st.session_state["completed"]:
                                     # **7️⃣ Agregar detalles adicionales**
                                     for key, value in details.items():
                                         if key in ["reinforced", "food_grade", "isotank", "flexitank", "imo_cargo", "imo_type", "un_code", "routes", "packages", 
-                                                "dimensions_flatrack", "customs_origin", "destination_cost", "type_container"]:
+                                                "dimensions_flatrack", "customs_origin", "destination_cost", "type_container", "ground_routes"]:
                                             continue
                                         if value is None or value == "" or (isinstance(value, (int, float)) and value == 0):
                                             continue
