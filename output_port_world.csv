@@ -23809,7 +23809,7 @@ ITOCO,Occimiano,Italy
 ITOCS,Oggiona con Santo Stefano,Italy
 ITODL,Odolo,Italy
 ITODZ,Oderzo,Italy
-ITOEN,None,Italy
+ITOEN,,Italy
 ITOEO,Offanengo,Italy
 ITOGG,Oggiono,Italy
 ITOGI,Oleggio Castello,Italy
@@ -29618,252 +29618,251 @@ NPTPU,Tikapur,Nepal
 NRINU,Nauru Island,Nauru
 NUALO,Alofi,Niue
 NUIUE,Niue Island,Niue
-NULL,.AFGHANISTAN,Afghanistan
-NULL,.ALBANIA,Albania
-NULL,.ALGERIA,Algeria
-NULL,.YEMEN,Yemen
-NULL,.LIECHTENSTEIN,Liechtenstein
-NULL,.KOREA, DEMOCRATIC PEOPLE'S REPUBLIC OF
-NULL,.KYRGYZSTAN,Kyrgyzstan
-NULL,.KOREA, REPUBLIC OF
-NULL,Kourou = GF QKR,France
-NULL,.KUWAIT,Kuwait
-NULL,.KIRIBATI,Kiribati
-NULL,.LIBERIA,Liberia
-NULL,.LESOTHO,Lesotho
-NULL,.LITHUANIA,Lithuania
-NULL,.LAO PEOPLE'S DEMOCRATIC REPUBLIC,Lao People's Democratic Republic
-NULL,Le Port = RE LPT,France
-NULL,.LATVIA,Latvia
-NULL,.LIBYAN ARAB JAMAHIRIYA,Libyan Arab Jamahiriya
-NULL,.LEBANON,Lebanon
-NULL,.MAURITIUS,Mauritius
-NULL,.MACEDONIA, THE FORMER YUGOSLAV REPUBLIC OF
-NULL,.MACAO,Macao
-NULL,.MALAWI,Malawi
-NULL,.LUXEMBOURG,Luxembourg
-NULL,.MADAGASCAR,Madagascar
-NULL,.MALTA,Malta
-NULL,.MALAYSIA,Malaysia
-NULL,.MARTINIQUE,Martinique
-NULL,.MICRONESIA, FEDERATED STATES OF
-NULL,.MONGOLIA,Mongolia
-NULL,.MAURITANIA,Mauritania
-NULL,.MARSHALL ISLANDS,Marshall Islands
-NULL,.MALDIVES,Maldives
-NULL,.MALI,Mali
-NULL,.MAYOTTE,Mayotte
-NULL,.NAURU,Nauru
-NULL,.NETHERLANDS ANTILLES,Netherlands Antilles
-NULL,.MYANMAR,Myanmar
-NULL,.MOZAMBIQUE,Mozambique
-NULL,.NETHERLANDS,Netherlands
-NULL,.NAMIBIA,Namibia
-NULL,.MEXICO,Mexico
-NULL,.MOLDOVA, REPUBLIC OF
-NULL,.MONTSERRAT,Montserrat
-NULL,.MONACO,Monaco
-NULL,.NEW CALEDONIA,New Caledonia
-NULL,.NORFOLK ISLAND,Norfolk Island
-NULL,.NEPAL,Nepal
-NULL,.NIGERIA,Nigeria
-NULL,.NICARAGUA,Nicaragua
-NULL,.MOROCCO,Morocco
-NULL,.OMAN,Oman
-NULL,.PAKISTAN,Pakistan
-NULL,.NIUE,Niue
-NULL,.NORWAY,Norway
-NULL,.NEW ZEALAND,New Zealand
-NULL,.NIGER,Niger
-NULL,.NORTHERN MARIANA ISLANDS,Northern Mariana Islands
-NULL,.PHILIPPINES,Philippines
-NULL,.PANAMA,Panama
-NULL,.PAPUA NEW GUINEA,Papua New Guinea
-NULL,.PALAU,Palau
-NULL,.PITCAIRN,Pitcairn
-NULL,.POLAND,Poland
-NULL,.PUERTO RICO,Puerto Rico
-NULL,.QATAR,Qatar
-NULL,.PARAGUAY,Paraguay
-NULL,.PERU,Peru
-NULL,Pointe a Pitre = GP PTP,France
-NULL,.ROMANIA,Romania
-NULL,.SAINT KITTS AND NEVIS,Saint Kitts and Nevis
-NULL,.RWANDA,Rwanda
-NULL,.RÉUNION,Réunion
-NULL,.SAINT LUCIA,Saint Lucia
-NULL,.SAINT VINCENT AND THE GRENADINES,Saint Vincent and the Grenadines
-NULL,.RUSSIAN FEDERATION,Russian Federation
-NULL,.SAINT HELENA,Saint Helena
-NULL,.SAMOA,Samoa
-NULL,.SAINT PIERRE AND MIQUELON,Saint Pierre and Miquelon
-NULL,.SAO TOME AND PRINCIPE,Sao Tome and Principe
-NULL,.SAUDI ARABIA,Saudi Arabia
-NULL,.SEYCHELLES,Seychelles
-NULL,.SINGAPORE,Singapore
-NULL,.SERBIA AND MONTENEGRO,Serbia and Montenegro
-NULL,.SENEGAL,Senegal
-NULL,.SIERRA LEONE,Sierra Leone
-NULL,.SAN MARINO,San Marino
-NULL,.SPAIN,Spain
-NULL,St Pierre = PM FSP,France
-NULL,.SOMALIA,Somalia
-NULL,.SLOVENIA,Slovenia
-NULL,.SLOVAKIA,Slovakia
-NULL,.SOLOMON ISLANDS,Solomon Islands
-NULL,.SOUTH GEORGIA AND THE SOUTH SANDWICH ISLANDS,South Georgia and the South Sandwich Islands
-NULL,St Denis = RE RUN,France
-NULL,.SURINAME,Suriname
-NULL,St Laurent du Maroni = GF SLM,France
-NULL,.SYRIAN ARAB REPUBLIC,Syrian Arab Republic
-NULL,.SWAZILAND,Swaziland
-NULL,.TAIWAN, PROVINCE OF CHINA
-NULL,.SUDAN,Sudan
-NULL,.SRI LANKA,Sri Lanka
-NULL,.SOUTH AFRICA,South Africa
-NULL,.TIMOR-LESTE,Timor-Leste
-NULL,.THAILAND,Thailand
-NULL,.TONGA,Tonga
-NULL,.SWEDEN,Sweden
-NULL,.TANZANIA, UNITED REPUBLIC OF
-NULL,.SWITZERLAND,Switzerland
-NULL,.TAJIKISTAN,Tajikistan
-NULL,.SVALBARD AND JAN MAYEN,Svalbard and Jan Mayen
-NULL,.VIET NAM,Viet Nam
-NULL,.VIRGIN ISLANDS, BRITISH
-NULL,.PORTUGAL,Portugal
-NULL,.TURKEY,Turkey
-NULL,.TOKELAU,Tokelau
-NULL,.TRINIDAD AND TOBAGO,Trinidad and Tobago
-NULL,.TUNISIA,Tunisia
-NULL,.UNITED KINGDOM,United Kingdom
-NULL,.UNITED STATES,United States
-NULL,.TURKS AND CAICOS ISLANDS,Turks and Caicos Islands
-NULL,.VANUATU,Vanuatu
-NULL,.TURKMENISTAN,Turkmenistan
-NULL,.URUGUAY,Uruguay
-NULL,.UKRAINE,Ukraine
-NULL,.UZBEKISTAN,Uzbekistan
-NULL,.TUVALU,Tuvalu
-NULL,.TOGO,Togo
-NULL,.WALLIS AND FUTUNA,Wallis and Futuna
-NULL,.VIRGIN ISLANDS, U.S.
-NULL,.UNITED STATES MINOR OUTLYING ISLANDS,United States Minor Outlying Islands
-NULL,.UGANDA,Uganda
-NULL,.UNITED ARAB EMIRATES,United Arab Emirates
-NULL,.VENEZUELA,Venezuela
-NULL,.ZAMBIA,Zambia
-NULL,.ZIMBABWE,Zimbabwe
-NULL,.WESTERN SAHARA,Western Sahara
-NULL,.AMERICAN SAMOA,American Samoa
-NULL,.ANDORRA,Andorra
-NULL,.ANGOLA,Angola
-NULL,.ANGUILLA,Anguilla
-NULL,.ANTARCTICA,Antarctica
-NULL,.ANTIGUA AND BARBUDA,Antigua and Barbuda
-NULL,.ARGENTINA,Argentina
-NULL,.ARMENIA,Armenia
-NULL,.ARUBA,Aruba
-NULL,.AUSTRALIA,Australia
-NULL,.AUSTRIA,Austria
-NULL,.AZERBAIJAN,Azerbaijan
-NULL,.BAHAMAS,Bahamas
-NULL,.BAHRAIN,Bahrain
-NULL,.BANGLADESH,Bangladesh
-NULL,.BARBADOS,Barbados
-NULL,Basse Terre = GP BBR,France
-NULL,.BELARUS,Belarus
-NULL,.BELGIUM,Belgium
-NULL,.BELIZE,Belize
-NULL,.BENIN,Benin
-NULL,.BERMUDA,Bermuda
-NULL,.BHUTAN,Bhutan
-NULL,.BOLIVIA,Bolivia
-NULL,.BOSNIA AND HERZEGOVINA,Bosnia and Herzegovina
-NULL,.BOTSWANA,Botswana
-NULL,.BRAZIL,Brazil
-NULL,.BRITISH INDIAN OCEAN TERRITORY,British Indian Ocean Territory
-NULL,.BRUNEI DARUSSALAM,Brunei Darussalam
-NULL,.BULGARIA,Bulgaria
-NULL,.BURKINA FASO,Burkina Faso
-NULL,.BURUNDI,Burundi
-NULL,.CAMBODIA,Cambodia
-NULL,.CAMEROON,Cameroon
-NULL,.CANADA,Canada
-NULL,.CAPE VERDE,Cape Verde
-NULL,Cayenne = GF CAY,France
-NULL,.CAYMAN ISLANDS,Cayman Islands
-NULL,.CENTRAL AFRICAN REPUBLIC,Central African Republic
-NULL,.CHAD,Chad
-NULL,.CHILE,Chile
-NULL,.CHINA,China
-NULL,.CHRISTMAS ISLAND,Christmas Island
-NULL,.COCOS (KEELING) ISLANDS,Cocos (Keeling) Islands
-NULL,.COLOMBIA,Colombia
-NULL,.COMOROS,Comoros
-NULL,.CONGO,Congo
-NULL,.CONGO, THE DEMOCRATIC REPUBLIC OF THE
-NULL,.COOK ISLANDS,Cook Islands
-NULL,.COSTA RICA,Costa Rica
-NULL,.CÔTE D'IVOIRE,Côte d'Ivoire
-NULL,.CROATIA,Croatia
-NULL,.CUBA,Cuba
-NULL,.CYPRUS,Cyprus
-NULL,.CZECH REPUBLIC,Czech Republic
-NULL,.DENMARK,Denmark
-NULL,.DJIBOUTI,Djibouti
-NULL,.DOMINICA,Dominica
-NULL,.DOMINICAN REPUBLIC,Dominican Republic
-NULL,.ECUADOR,Ecuador
-NULL,.EGYPT,Egypt
-NULL,.EL SALVADOR,El Salvador
-NULL,.EQUATORIAL GUINEA,Equatorial Guinea
-NULL,.ERITREA,Eritrea
-NULL,.ESTONIA,Estonia
-NULL,.FAROE ISLANDS,Faroe Islands
-NULL,.ETHIOPIA,Ethiopia
-NULL,.FIJI,Fiji
-NULL,.FALKLAND ISLANDS (MALVINAS),Falkland Islands (Malvinas)
-NULL,.FINLAND,Finland
-NULL,Fort de France = MQ FDF,France
-NULL,.FRANCE,France
-NULL,.FRENCH GUIANA,French Guiana
-NULL,.GABON,Gabon
-NULL,.GEORGIA,Georgia
-NULL,.FRENCH POLYNESIA,French Polynesia
-NULL,.GAMBIA,Gambia
-NULL,.GERMANY,Germany
-NULL,.GHANA,Ghana
-NULL,.GRENADA,Grenada
-NULL,.GIBRALTAR,Gibraltar
-NULL,.GUAM,Guam
-NULL,.GREECE,Greece
-NULL,.GREENLAND,Greenland
-NULL,.GUADELOUPE,Guadeloupe
-NULL,.GUATEMALA,Guatemala
-NULL,.HAITI,Haiti
-NULL,.HEARD ISLAND AND MCDONALD ISLANDS,Heard Island and McDonald Islands
-NULL,.GUINEA-BISSAU,Guinea-Bissau
-NULL,.GUINEA,Guinea
-NULL,.GUYANA,Guyana
-NULL,.HUNGARY,Hungary
-NULL,.HONDURAS,Honduras
-NULL,.HOLY SEE (VATICAN CITY STATE),Holy See (Vatican City State)
-NULL,.HONG KONG ,Hong Kong 
-NULL,.INDONESIA,Indonesia
-NULL,.JAMAICA,Jamaica
-NULL,.IRAN, ISLAMIC REPUBLIC OF
-NULL,.JAPAN,Japan
-NULL,.ICELAND,Iceland
-NULL,.INSTALLATIONS IN INTERNATIONAL WATERS,Installations in International Waters
-NULL,.ITALY,Italy
-NULL,.JORDAN,Jordan
-NULL,.ISRAEL,Israel
-NULL,.IRELAND,Ireland
-NULL,.IRAQ,Iraq
-NULL,.KAZAKHSTAN,Kazakhstan
-NULL,.KENYA,Kenya
-NYC,New York,USA
+,.AFGHANISTAN,Afghanistan
+,.ALBANIA,Albania
+,.ALGERIA,Algeria
+,.YEMEN,Yemen
+,.LIECHTENSTEIN,Liechtenstein
+,.KOREA, DEMOCRATIC PEOPLE'S REPUBLIC OF
+,.KYRGYZSTAN,Kyrgyzstan
+,.KOREA, REPUBLIC OF
+,Kourou = GF QKR,France
+,.KUWAIT,Kuwait
+,.KIRIBATI,Kiribati
+,.LIBERIA,Liberia
+,.LESOTHO,Lesotho
+,.LITHUANIA,Lithuania
+,.LAO PEOPLE'S DEMOCRATIC REPUBLIC,Lao People's Democratic Republic
+,Le Port = RE LPT,France
+,.LATVIA,Latvia
+,.LIBYAN ARAB JAMAHIRIYA,Libyan Arab Jamahiriya
+,.LEBANON,Lebanon
+,.MAURITIUS,Mauritius
+,.MACEDONIA, THE FORMER YUGOSLAV REPUBLIC OF
+,.MACAO,Macao
+,.MALAWI,Malawi
+,.LUXEMBOURG,Luxembourg
+,.MADAGASCAR,Madagascar
+,.MALTA,Malta
+,.MALAYSIA,Malaysia
+,.MARTINIQUE,Martinique
+,.MICRONESIA, FEDERATED STATES OF
+,.MONGOLIA,Mongolia
+,.MAURITANIA,Mauritania
+,.MARSHALL ISLANDS,Marshall Islands
+,.MALDIVES,Maldives
+,.MALI,Mali
+,.MAYOTTE,Mayotte
+,.NAURU,Nauru
+,.NETHERLANDS ANTILLES,Netherlands Antilles
+,.MYANMAR,Myanmar
+,.MOZAMBIQUE,Mozambique
+,.NETHERLANDS,Netherlands
+,.NAMIBIA,Namibia
+,.MEXICO,Mexico
+,.MOLDOVA, REPUBLIC OF
+,.MONTSERRAT,Montserrat
+,.MONACO,Monaco
+,.NEW CALEDONIA,New Caledonia
+,.NORFOLK ISLAND,Norfolk Island
+,.NEPAL,Nepal
+,.NIGERIA,Nigeria
+,.NICARAGUA,Nicaragua
+,.MOROCCO,Morocco
+,.OMAN,Oman
+,.PAKISTAN,Pakistan
+,.NIUE,Niue
+,.NORWAY,Norway
+,.NEW ZEALAND,New Zealand
+,.NIGER,Niger
+,.NORTHERN MARIANA ISLANDS,Northern Mariana Islands
+,.PHILIPPINES,Philippines
+,.PANAMA,Panama
+,.PAPUA NEW GUINEA,Papua New Guinea
+,.PALAU,Palau
+,.PITCAIRN,Pitcairn
+,.POLAND,Poland
+,.PUERTO RICO,Puerto Rico
+,.QATAR,Qatar
+,.PARAGUAY,Paraguay
+,.PERU,Peru
+,Pointe a Pitre = GP PTP,France
+,.ROMANIA,Romania
+,.SAINT KITTS AND NEVIS,Saint Kitts and Nevis
+,.RWANDA,Rwanda
+,.RÉUNION,Réunion
+,.SAINT LUCIA,Saint Lucia
+,.SAINT VINCENT AND THE GRENADINES,Saint Vincent and the Grenadines
+,.RUSSIAN FEDERATION,Russian Federation
+,.SAINT HELENA,Saint Helena
+,.SAMOA,Samoa
+,.SAINT PIERRE AND MIQUELON,Saint Pierre and Miquelon
+,.SAO TOME AND PRINCIPE,Sao Tome and Principe
+,.SAUDI ARABIA,Saudi Arabia
+,.SEYCHELLES,Seychelles
+,.SINGAPORE,Singapore
+,.SERBIA AND MONTENEGRO,Serbia and Montenegro
+,.SENEGAL,Senegal
+,.SIERRA LEONE,Sierra Leone
+,.SAN MARINO,San Marino
+,.SPAIN,Spain
+,St Pierre = PM FSP,France
+,.SOMALIA,Somalia
+,.SLOVENIA,Slovenia
+,.SLOVAKIA,Slovakia
+,.SOLOMON ISLANDS,Solomon Islands
+,.SOUTH GEORGIA AND THE SOUTH SANDWICH ISLANDS,South Georgia and the South Sandwich Islands
+,St Denis = RE RUN,France
+,.SURINAME,Suriname
+,St Laurent du Maroni = GF SLM,France
+,.SYRIAN ARAB REPUBLIC,Syrian Arab Republic
+,.SWAZILAND,Swaziland
+,.TAIWAN, PROVINCE OF CHINA
+,.SUDAN,Sudan
+,.SRI LANKA,Sri Lanka
+,.SOUTH AFRICA,South Africa
+,.TIMOR-LESTE,Timor-Leste
+,.THAILAND,Thailand
+,.TONGA,Tonga
+,.SWEDEN,Sweden
+,.TANZANIA, UNITED REPUBLIC OF
+,.SWITZERLAND,Switzerland
+,.TAJIKISTAN,Tajikistan
+,.SVALBARD AND JAN MAYEN,Svalbard and Jan Mayen
+,.VIET NAM,Viet Nam
+,.VIRGIN ISLANDS, BRITISH
+,.PORTUGAL,Portugal
+,.TURKEY,Turkey
+,.TOKELAU,Tokelau
+,.TRINIDAD AND TOBAGO,Trinidad and Tobago
+,.TUNISIA,Tunisia
+,.UNITED KINGDOM,United Kingdom
+,.UNITED STATES,United States
+,.TURKS AND CAICOS ISLANDS,Turks and Caicos Islands
+,.VANUATU,Vanuatu
+,.TURKMENISTAN,Turkmenistan
+,.URUGUAY,Uruguay
+,.UKRAINE,Ukraine
+,.UZBEKISTAN,Uzbekistan
+,.TUVALU,Tuvalu
+,.TOGO,Togo
+,.WALLIS AND FUTUNA,Wallis and Futuna
+,.VIRGIN ISLANDS, U.S.
+,.UNITED STATES MINOR OUTLYING ISLANDS,United States Minor Outlying Islands
+,.UGANDA,Uganda
+,.UNITED ARAB EMIRATES,United Arab Emirates
+,.VENEZUELA,Venezuela
+,.ZAMBIA,Zambia
+,.ZIMBABWE,Zimbabwe
+,.WESTERN SAHARA,Western Sahara
+,.AMERICAN SAMOA,American Samoa
+,.ANDORRA,Andorra
+,.ANGOLA,Angola
+,.ANGUILLA,Anguilla
+,.ANTARCTICA,Antarctica
+,.ANTIGUA AND BARBUDA,Antigua and Barbuda
+,.ARGENTINA,Argentina
+,.ARMENIA,Armenia
+,.ARUBA,Aruba
+,.AUSTRALIA,Australia
+,.AUSTRIA,Austria
+,.AZERBAIJAN,Azerbaijan
+,.BAHAMAS,Bahamas
+,.BAHRAIN,Bahrain
+,.BANGLADESH,Bangladesh
+,.BARBADOS,Barbados
+,Basse Terre = GP BBR,France
+,.BELARUS,Belarus
+,.BELGIUM,Belgium
+,.BELIZE,Belize
+,.BENIN,Benin
+,.BERMUDA,Bermuda
+,.BHUTAN,Bhutan
+,.BOLIVIA,Bolivia
+,.BOSNIA AND HERZEGOVINA,Bosnia and Herzegovina
+,.BOTSWANA,Botswana
+,.BRAZIL,Brazil
+,.BRITISH INDIAN OCEAN TERRITORY,British Indian Ocean Territory
+,.BRUNEI DARUSSALAM,Brunei Darussalam
+,.BULGARIA,Bulgaria
+,.BURKINA FASO,Burkina Faso
+,.BURUNDI,Burundi
+,.CAMBODIA,Cambodia
+,.CAMEROON,Cameroon
+,.CANADA,Canada
+,.CAPE VERDE,Cape Verde
+,Cayenne = GF CAY,France
+,.CAYMAN ISLANDS,Cayman Islands
+,.CENTRAL AFRICAN REPUBLIC,Central African Republic
+,.CHAD,Chad
+,.CHILE,Chile
+,.CHINA,China
+,.CHRISTMAS ISLAND,Christmas Island
+,.COCOS (KEELING) ISLANDS,Cocos (Keeling) Islands
+,.COLOMBIA,Colombia
+,.COMOROS,Comoros
+,.CONGO,Congo
+,.CONGO, THE DEMOCRATIC REPUBLIC OF THE
+,.COOK ISLANDS,Cook Islands
+,.COSTA RICA,Costa Rica
+,.CÔTE D'IVOIRE,Côte d'Ivoire
+,.CROATIA,Croatia
+,.CUBA,Cuba
+,.CYPRUS,Cyprus
+,.CZECH REPUBLIC,Czech Republic
+,.DENMARK,Denmark
+,.DJIBOUTI,Djibouti
+,.DOMINICA,Dominica
+,.DOMINICAN REPUBLIC,Dominican Republic
+,.ECUADOR,Ecuador
+,.EGYPT,Egypt
+,.EL SALVADOR,El Salvador
+,.EQUATORIAL GUINEA,Equatorial Guinea
+,.ERITREA,Eritrea
+,.ESTONIA,Estonia
+,.FAROE ISLANDS,Faroe Islands
+,.ETHIOPIA,Ethiopia
+,.FIJI,Fiji
+,.FALKLAND ISLANDS (MALVINAS),Falkland Islands (Malvinas)
+,.FINLAND,Finland
+,Fort de France = MQ FDF,France
+,.FRANCE,France
+,.FRENCH GUIANA,French Guiana
+,.GABON,Gabon
+,.GEORGIA,Georgia
+,.FRENCH POLYNESIA,French Polynesia
+,.GAMBIA,Gambia
+,.GERMANY,Germany
+,.GHANA,Ghana
+,.GRENADA,Grenada
+,.GIBRALTAR,Gibraltar
+,.GUAM,Guam
+,.GREECE,Greece
+,.GREENLAND,Greenland
+,.GUADELOUPE,Guadeloupe
+,.GUATEMALA,Guatemala
+,.HAITI,Haiti
+,.HEARD ISLAND AND MCDONALD ISLANDS,Heard Island and McDonald Islands
+,.GUINEA-BISSAU,Guinea-Bissau
+,.GUINEA,Guinea
+,.GUYANA,Guyana
+,.HUNGARY,Hungary
+,.HONDURAS,Honduras
+,.HOLY SEE (VATICAN CITY STATE),Holy See (Vatican City State)
+,.HONG KONG ,Hong Kong 
+,.INDONESIA,Indonesia
+,.JAMAICA,Jamaica
+,.IRAN, ISLAMIC REPUBLIC OF
+,.JAPAN,Japan
+,.ICELAND,Iceland
+,.INSTALLATIONS IN INTERNATIONAL WATERS,Installations in International Waters
+,.ITALY,Italy
+,.JORDAN,Jordan
+,.ISRAEL,Israel
+,.IRELAND,Ireland
+,.IRAQ,Iraq
+,.KAZAKHSTAN,Kazakhstan
+,.KENYA,Kenya
 NZAKA,Akaroa,New Zealand
 NZAKL,Auckland,New Zealand
 NZALR,Alexandra,New Zealand

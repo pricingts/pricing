@@ -15,9 +15,9 @@ SERVICES_FILE = "services.json"
 TEMP_DIR = "temp_uploads"
 
 all_quotes_columns =[
-    "request_id", "time", "commercial", "service", "client", "client_reference", "incoterm", "commodity", "hs_code", "transport_type", "modality", "routes_info", "country_origin", "country_destination", "pickup_address", "zip_code_origin", "delivery_address", "zip_code_destination",
+    "request_id", "time", "commercial", "service", "client", "client_reference", "incoterm", "commodity", "hs_code", "transport_type", "modality", "routes_info", "ground_routes", "country_origin", "country_destination", "pickup_address", "zip_code_origin", "delivery_address", "zip_code_destination", "addresses",
     "type_container", "info_flatrack", "container_characteristics", "imo", "ground_service", "reefer_details", "additional_costs", "cargo_value", "weight", "positioning", "pickup_city", "lcl_fcl_mode",
-    "info_pallets_str", "lcl_description", "stackable", "final_comments"
+    "info_pallets_str", "lcl_description", "stackable", "final_comments",
 ]
 
 sheet_id = st.secrets["general"]["sheet_id"]
@@ -523,7 +523,6 @@ def handle_routes(transport_type):
         if "ports_csv" not in st.session_state or st.session_state["ports_csv"] is None:
             try:
                 st.session_state["ports_csv"] = load_csv("output_port_world.csv")
-                print("cargue")
             except Exception as e:
                 st.error(f"⚠️ Error cargando output_port_world.csv: {e}")
                 return
@@ -536,7 +535,6 @@ def handle_routes(transport_type):
     for i in range(len(st.session_state["routes"])):
         route = st.session_state["routes"][i]
         st.markdown(f"### Route {i+1}")
-        
         cols = st.columns([0.45, 0.45, 0.1])
 
         with cols[0]: 
@@ -692,52 +690,98 @@ def questions_by_incoterm(incoterm, details, service, transport_type):
 
     return details, routes
 
-def ground_transport():
+def initialize_ground_routes():
+    if "ground_routes" not in st.session_state:
+        st.session_state["ground_routes"] = [{
+            "country_origin": "", "city_origin": "", "pickup_address": "", "zip_code_origin": "",
+            "country_destination": "", "city_destination": "", "delivery_address": "", "zip_code_destination": ""
+        }]
 
+def add_ground_route():
+    st.session_state["ground_routes"].append({
+        "country_origin": "", "city_origin": "", "pickup_address": "", "zip_code_origin": "",
+        "country_destination": "", "city_destination": "", "delivery_address": "", "zip_code_destination": ""
+    })
+
+def remove_ground_route(index):
+    if 0 <= index < len(st.session_state["ground_routes"]):
+        del st.session_state["ground_routes"][index]
+
+def ground_transport():
+    initialize_ground_routes()
     temp_details = st.session_state.get("temp_details", {})
     data = st.session_state.get("cities_csv", [])
     countries = data["Country"].dropna().unique().tolist()
+    routes = [] 
 
-    col1, col2 = st.columns(2)
-    with col1:
-        country_origin = st.selectbox("Country of Origin*", options=[""] + countries, key="country_origin",
-            index=(countries.index(temp_details.get("country_origin", "")) + 1)
-            if temp_details.get("country_origin", "") in countries else 0,
-        )
+    for i, route in enumerate(st.session_state["ground_routes"]):
+        st.markdown(f"### Route {i+1}")
 
-    filtered_cities = []
-    if country_origin:
-        filtered_cities = (data[data["Country"] == country_origin]["City"].dropna().unique().tolist())
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            country_origin = st.selectbox(
+                f"Country of Origin*", options=[""] + countries, key=f"country_origin_{i}",
+                index=(countries.index(temp_details.get("country_origin", "")) + 1)
+                if temp_details.get("country_origin", "") in countries else 0,
+            )
 
-    with col2:
-        city_origin = st.selectbox("City of Origin*", options=[""] + filtered_cities, key="city_origin",
-            index=(filtered_cities.index(temp_details.get("city_origin", "")) + 1)
-            if temp_details.get("city_origin", "") in filtered_cities else 0,
-        )
+        filtered_cities = []
+        if country_origin:
+            filtered_cities = (data[data["Country"] == country_origin]["City"].dropna().unique().tolist())
 
-    pickup_address = st.text_input("Pickup Address*", key="pickup_address", value=temp_details.get("pickup_address", ""))
-    zip_code_origin = st.text_input("Zip Code City of Origin", key="zip_code_origin", value=temp_details.get("zip_code_origin", ""))
+        with col2:
+            city_origin = st.selectbox(
+                f"City of Origin*", options=[""] + filtered_cities, key=f"city_origin_{i}",
+                index=(filtered_cities.index(temp_details.get("city_origin", "")) + 1)
+                if temp_details.get("city_origin", "") in filtered_cities else 0,
+            )
+        with col3:
+            pickup_address = st.text_input(
+                f"Pickup Address*", key=f"pickup_address_{i}", value=temp_details.get("pickup_address", ""))
+        with col4:
+            zip_code_origin = st.text_input(
+                f"Zip Code Origin*", key=f"zip_code_origin_{i}", value=temp_details.get("zip_code_origin", ""))
 
-    col1, col2 = st.columns(2)
-    with col1:
-        country_destination = st.selectbox(
-            "Country of Destination*", options=[""] + countries, key="country_destination",
-            index=(countries.index(temp_details.get("country_destination", "")) + 1)
-            if temp_details.get("country_destination", "") in countries else 0,
-        )
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            country_destination = st.selectbox(
+                f"Country of Destination*", options=[""] + countries, key=f"country_destination_{i}",
+                index=(countries.index(temp_details.get("country_destination", "")) + 1)
+                if temp_details.get("country_destination", "") in countries else 0,
+            )
 
-    filtered_cities_destination = []
-    if country_destination:
-        filtered_cities_destination = (data[data["Country"] == country_destination]["City"].dropna().unique().tolist())
+        filtered_cities_destination = []
+        if country_destination:
+            filtered_cities_destination = (data[data["Country"] == country_destination]["City"].dropna().unique().tolist())
 
-    with col2:
-        city_destination = st.selectbox("City of Destination*", options=[""] + filtered_cities_destination, key="city_destination",
-            index=(filtered_cities_destination.index(temp_details.get("city_destination", "")) + 1)
-            if temp_details.get("city_destination", "") in filtered_cities_destination else 0,
-        )
+        with col2:
+            city_destination = st.selectbox(
+                f"City of Destination*", options=[""] + filtered_cities_destination, key=f"city_destination_{i}",
+                index=(filtered_cities_destination.index(temp_details.get("city_destination", "")) + 1)
+                if temp_details.get("city_destination", "") in filtered_cities_destination else 0,
+            )
 
-    delivery_address = st.text_input("Delivery Address*", key="delivery_address", value=temp_details.get("delivery_address", ""))
-    zip_code_destination = st.text_input("Zip Code City of Destination", key="zip_code_destination", value=temp_details.get("zip_code_destination", ""))
+        with col3:
+            delivery_address = st.text_input(
+                f"Delivery Address*", key=f"delivery_address_{i}", value=temp_details.get("delivery_address", ""))
+        with col4:
+            zip_code_destination = st.text_input(
+                f"Zip Code Destination*", key=f"zip_code_destination_{i}", value=temp_details.get("zip_code_destination", ""))
+
+        routes.append({
+            "country_origin": country_origin,
+            "city_origin": city_origin,
+            "pickup_address": pickup_address,
+            "zip_code_origin": zip_code_origin,
+            "country_destination": country_destination,
+            "city_destination": city_destination,
+            "delivery_address": delivery_address,
+            "zip_code_destination": zip_code_destination
+        })
+
+        st.button(f"❌ Remove Route {i+1}", on_click=lambda idx=i: remove_ground_route(idx), key=f"remove_route_{i}")
+
+    st.button("➕ Add another route", on_click=add_ground_route)
 
     commodity = st.text_input("Commodity*", key="commodity", value=temp_details.get("commodity", ""))
     hs_code = st.text_input("HS Code", key="hs_code", value=temp_details.get("hs_code", ""))
@@ -768,14 +812,7 @@ def ground_transport():
         temperature = st.text_input(
             "Temperature range °C*", key="temperature", value=temp_details.get("temperature", ""))
         return {
-            "country_origin": country_origin,
-            "city_origin": city_origin,
-            "country_destination": country_destination,
-            "city_destination": city_destination,
-            "pickup_address": pickup_address,
-            "zip_code_origin": zip_code_origin,
-            "delivery_address": delivery_address,
-            "zip_code_destination": zip_code_destination,
+            "ground_routes": routes,
             "commodity": commodity,
             "hs_code": hs_code,
             **imo,
@@ -787,14 +824,7 @@ def ground_transport():
     if ground_service == "LTL":
         dimensions_info = dimensions() or {}
         return {
-            "country_origin": country_origin,
-            "city_origin": city_origin,
-            "country_destination": country_destination,
-            "city_destination": city_destination,
-            "pickup_address": pickup_address,
-            "zip_code_origin": zip_code_origin,
-            "delivery_address": delivery_address,
-            "zip_code_destination": zip_code_destination,
+            "ground_routes": routes,
             "commodity": commodity,
             "hs_code": hs_code,
             **imo,
@@ -806,14 +836,7 @@ def ground_transport():
         }
 
     return {
-        "country_origin": country_origin,
-        "city_origin": city_origin,
-        "country_destination": country_destination,
-        "city_destination": city_destination,
-        "pickup_address": pickup_address,
-        "zip_code_origin": zip_code_origin,
-        "delivery_address": delivery_address,
-        "zip_code_destination": zip_code_destination,
+        "ground_routes": routes,
         "commodity": commodity,
         "hs_code": hs_code,
         **imo,
@@ -1077,31 +1100,32 @@ def validate_service_details(temp_details):
                     errors.append("Delivery address is required.")
 
     elif service == "Ground Transportation":
-        pickup_address = temp_details.get("pickup_address","")
-        delivery_address = temp_details.get("delivery_address", "")
-        country_origin = temp_details.get("country_origin", "")
-        country_destination = temp_details.get("country_destination", "")
-        city_origin = temp_details.get("city_origin", "")
-        city_destination = temp_details.get("city_destination", "")
-        cargo_value = temp_details.get("cargo_value", 0.0)
-        weight = temp_details.get("weight", 0.0)
+        pass
+        # pickup_address = temp_details.get("pickup_address","")
+        # delivery_address = temp_details.get("delivery_address", "")
+        # country_origin = temp_details.get("country_origin", "")
+        # country_destination = temp_details.get("country_destination", "")
+        # city_origin = temp_details.get("city_origin", "")
+        # city_destination = temp_details.get("city_destination", "")
+        # cargo_value = temp_details.get("cargo_value", 0.0)
+        # weight = temp_details.get("weight", 0.0)
 
-        if not country_origin:
-            errors.append("Country of Origin is required.")
-        if not city_origin:
-            errors.append("City of Origin is required.")
-        if not country_destination:
-            errors.append("Country of Destination is required.")
-        if not city_destination:
-            errors.append("City of Destination is required.")
-        if not pickup_address:
-            errors.append("Pick up address is required.")
-        if not delivery_address:
-            errors.append("Delivery address is required.")
-        if cargo_value <= 0.0:
-            errors.append("Cargo value is required.")
-        if weight <= 0.0:
-            errors.append("Weight is required.")
+        # if not country_origin:
+        #     errors.append("Country of Origin is required.")
+        # if not city_origin:
+        #     errors.append("City of Origin is required.")
+        # if not country_destination:
+        #     errors.append("Country of Destination is required.")
+        # if not city_destination:
+        #     errors.append("City of Destination is required.")
+        # if not pickup_address:
+        #     errors.append("Pick up address is required.")
+        # if not delivery_address:
+        #     errors.append("Delivery address is required.")
+        # if cargo_value <= 0.0:
+        #     errors.append("Cargo value is required.")
+        # if weight <= 0.0:
+        #     errors.append("Weight is required.")
 
     elif service == "Customs Brokerage":
         country_origin = temp_details.get("country_origin", [])
@@ -1188,8 +1212,8 @@ def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
 
     is_ground_usa = (
         (dataframe["service"].str.contains("Ground Transportation", na=False)) &
-        (dataframe["country_origin"] == "United states") &
-        (dataframe["country_destination"] == "United states")
+        dataframe["country_origin"].str.lower().str.strip().eq("united states") &
+        dataframe["country_destination"].str.lower().str.strip().eq("united states")
     ).any() 
 
     attempts = 0
@@ -1546,8 +1570,7 @@ def clean_service_data(service_data):
     ]
 
     ground_keys = [
-        "country_origin", "city_origin", "pickup_address", "zip_code_origin", "country_destination", "city_destination", "delivery_address", "zip_code_destination",
-        "imo_cargo", "imo_type", "un_code", "weight", "ground_service", "temperature", "lcl_description", "stackable", "packages"
+        "ground_routes", "imo_cargo", "imo_type", "un_code", "weight", "ground_service", "temperature", "lcl_description", "stackable", "packages"
     ]
 
     customs_keys = [
