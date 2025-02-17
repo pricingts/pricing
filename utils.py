@@ -96,7 +96,7 @@ def cargo(service):
         pl_files = [save_file_locally(file) for file in packing_lists]
 
     if service != "Customs Brokerage" and transport_type != "Air":
-        weight = st.number_input("Total Weight", key="weight",  value=float(temp_details.get("weight", 0.0)),  
+        weight = st.number_input("Total Weight", key="weight",  value=temp_details.get("weight") or 0.0,  
                                 step=0.01,  min_value=0.0)
 
     return {
