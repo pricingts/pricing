@@ -1210,19 +1210,28 @@ def change_page(new_page):
 
 def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
 
+    temp_service = dataframe["service"].astype(str).str.replace("\n", ", ")
+
     is_ground_usa = (
-        (dataframe["service"].str.contains("Ground Transportation", na=False)) &
+        temp_service.str.contains(r"\bGround Transportation\b", na=False, regex=True) &
         dataframe["country_origin"].str.lower().str.strip().eq("united states") &
         dataframe["country_destination"].str.lower().str.strip().eq("united states")
-    ).any()
+    )
+
+    contains_ground_usa = is_ground_usa.any() 
 
     attempts = 0
     while attempts < max_attempts:
         try:
-            save_data_to_google_sheets(dataframe, sheet_id, "All Quotes")
-
-            if is_ground_usa:
-                save_data_to_google_sheets(dataframe, sheet_id, "Ground Quotations")
+            if contains_ground_usa: 
+                if "," in temp_service.iloc[0]:  
+                    save_data_to_google_sheets(dataframe, sheet_id, "All Quotes")
+                    save_data_to_google_sheets(dataframe, sheet_id, "Ground Quotations")
+                else:
+                    save_data_to_google_sheets(dataframe, sheet_id, "Ground Quotations")
+            
+            else: 
+                save_data_to_google_sheets(dataframe, sheet_id, "All Quotes")
 
             return 
 
@@ -1260,7 +1269,6 @@ def save_data_to_google_sheets(dataframe, sheet_id, sheet_name, max_attempts=5):
             if attempts == max_attempts:
                 st.error(f"Se alcanzó el máximo de intentos. No se pudo guardar la cotización en {sheet_name}.")
                 raise e
-
 
 def validate_shared_drive_folder(parent_folder_id):
     try:

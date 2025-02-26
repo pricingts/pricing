@@ -581,7 +581,7 @@ if st.session_state["completed"]:
 
                                             pallet_str = (
                                                 f"Package {i + 1}: Type: {p['type_packaging']}, Quantity: {p['quantity']}, "
-                                                f"Unit Weight: {p['weight_lcl']:.2f} {weight_unit}, Total Weight: {p['total_weight']:.2f} {weight_unit},"
+                                                f"Unit Weight: {p['weight_lcl']:.2f} {weight_unit}, Total Weight: {p['total_weight']:.2f} KG,"
                                                 f"Volume: {volume_value:.2f} {volume_label}, "
                                                 f"Dimensions: {p['length']:.2f} {length_unit} x {p['width']:.2f} {length_unit} x {p['height']:.2f} {length_unit}"
                                             )
