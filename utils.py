@@ -1211,26 +1211,17 @@ def change_page(new_page):
 def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
 
     temp_service = dataframe["service"].astype(str).str.replace("\n", ", ")
-
-    is_ground_usa = (
-        temp_service.str.contains(r"\bGround Transportation\b", na=False, regex=True) &
-        dataframe["country_origin"].str.lower().str.strip().eq("united states") &
-        dataframe["country_destination"].str.lower().str.strip().eq("united states")
-    )
-
-    contains_ground_usa = is_ground_usa.any() 
+    is_ground = temp_service.str.contains(r"\bGround Transportation\b", na=False, regex=True)
+    contains_ground = is_ground.any()
 
     attempts = 0
     while attempts < max_attempts:
         try:
-            if contains_ground_usa: 
-                if "," in temp_service.iloc[0]:  
+            if contains_ground: 
+                save_data_to_google_sheets(dataframe, sheet_id, "Ground Quotations")
+                if temp_service.str.contains(",").any():
                     save_data_to_google_sheets(dataframe, sheet_id, "All Quotes")
-                    save_data_to_google_sheets(dataframe, sheet_id, "Ground Quotations")
-                else:
-                    save_data_to_google_sheets(dataframe, sheet_id, "Ground Quotations")
-            
-            else: 
+            else:
                 save_data_to_google_sheets(dataframe, sheet_id, "All Quotes")
 
             return 
