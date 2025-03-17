@@ -622,18 +622,18 @@ if st.session_state["completed"]:
 
                                             first_route = ground_routes[0] if ground_routes else {}
 
-                                            grouped_record["country_origin"] = first_route.get("country_origin", "").strip()
-                                            grouped_record["country_destination"] = first_route.get("country_destination", "").strip()
+                                            grouped_record["country_origin"] = (first_route.get("country_origin") or "").strip()
+                                            grouped_record["country_destination"] = (first_route.get("country_destination") or "").strip()
 
                                             for idx, route in enumerate(ground_routes, start=1):
-                                                country_origin = route.get("country_origin", "").strip()
-                                                city_origin = route.get("city_origin", "").strip()
-                                                pickup_address = route.get("pickup_address", "").strip()
-                                                zip_code_origin = route.get("zip_code_origin", "").strip()
-                                                country_destination = route.get("country_destination", "").strip()
-                                                city_destination = route.get("city_destination", "").strip()
-                                                delivery_address = route.get("delivery_address", "").strip()
-                                                zip_code_destination = route.get("zip_code_destination", "").strip()
+                                                country_origin = (route.get("country_origin") or "").strip()
+                                                city_origin = (route.get("city_origin") or "").strip()
+                                                pickup_address = (route.get("pickup_address") or "").strip()
+                                                zip_code_origin = (route.get("zip_code_origin") or "").strip()
+                                                country_destination = (route.get("country_destination") or "").strip()
+                                                city_destination = (route.get("city_destination") or "").strip()
+                                                delivery_address = (route.get("delivery_address") or "").strip()
+                                                zip_code_destination = (route.get("zip_code_destination") or "").strip()
 
                                                 if city_origin and country_origin and city_destination and country_destination:
                                                     ground_routes_list.append(f"Route {idx}: {city_origin} ({country_origin}) → {city_destination} ({country_destination})")
@@ -641,7 +641,7 @@ if st.session_state["completed"]:
                                                 if pickup_address and zip_code_origin and delivery_address and zip_code_destination:
                                                     addresses_list.append(f"Address {idx}: {pickup_address} ({zip_code_origin}) → {delivery_address} ({zip_code_destination})")
 
-                                            grouped_record["ground_routes"] = str("\n".join(ground_routes_list)) if ground_routes_list else ""
+                                            grouped_record["ground_routes"] = "\n".join(ground_routes_list) if ground_routes_list else ""
                                             grouped_record["addresses"] = "\n".join(addresses_list) if addresses_list else ""
 
                                         else:

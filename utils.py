@@ -289,13 +289,15 @@ def common_questions():
             "Open Top 20'",
             "Open Top 40'",
             "Flat Rack 20'",
-            "Flat Rack 40'"
+            "Flat Rack 40'",
+            "Ro Ro",
+            "Break Bulk"
         ],
         default=[], 
         key="type_container"
     )
 
-    if any(tc in ["Flat Rack 20'", "Flat Rack 40'"] for tc in type_container):
+    if any(tc in ["Flat Rack 20'", "Flat Rack 40'", "Ro Ro", "Break Bulk"] for tc in type_container):
 
         col1, col2, col3, col4, col5, col6 = st.columns(6)
 
@@ -1100,32 +1102,36 @@ def validate_service_details(temp_details):
                     errors.append("Delivery address is required.")
 
     elif service == "Ground Transportation":
-        pass
-        # pickup_address = temp_details.get("pickup_address","")
-        # delivery_address = temp_details.get("delivery_address", "")
-        # country_origin = temp_details.get("country_origin", "")
-        # country_destination = temp_details.get("country_destination", "")
-        # city_origin = temp_details.get("city_origin", "")
-        # city_destination = temp_details.get("city_destination", "")
-        # cargo_value = temp_details.get("cargo_value", 0.0)
-        # weight = temp_details.get("weight", 0.0)
+        cargo_value = temp_details.get("cargo_value", 0.0)
+        weight = temp_details.get("weight", 0.0)
 
-        # if not country_origin:
-        #     errors.append("Country of Origin is required.")
-        # if not city_origin:
-        #     errors.append("City of Origin is required.")
-        # if not country_destination:
-        #     errors.append("Country of Destination is required.")
-        # if not city_destination:
-        #     errors.append("City of Destination is required.")
-        # if not pickup_address:
-        #     errors.append("Pick up address is required.")
-        # if not delivery_address:
-        #     errors.append("Delivery address is required.")
-        # if cargo_value <= 0.0:
-        #     errors.append("Cargo value is required.")
-        # if weight <= 0.0:
-        #     errors.append("Weight is required.")
+        routes = temp_details.get("ground_routes", [])
+        if not routes:
+            errors.append("At least one route is required.")
+        else:
+            for idx, route in enumerate(routes):
+                if not route.get("country_origin"):
+                    errors.append(f"The country of origin of the route {idx + 1} is required.")
+                if not route.get("city_origin"):
+                    errors.append(f"The city of origin of the route {idx + 1} is required.")
+                if not route.get("pickup_address"):
+                    errors.append(f"The pickup address of origin of the route {idx + 1} is required.")
+                if not route.get("zip_code_origin"):
+                    errors.append(f"The zip code of origin of the route {idx + 1} is required.")
+
+                if not route.get("country_destination"):
+                    errors.append(f"The country of destination of the route {idx + 1} is required.")
+                if not route.get("city_destination"):
+                    errors.append(f"The city of destination of the route {idx + 1} is required.")
+                if not route.get("delivery_address"):
+                    errors.append(f"The delivery address of the route {idx + 1} is required.")
+                if not route.get("zip_code_destination"):
+                    errors.append(f"The zip code of destination of the route {idx + 1} is required.")
+
+        if cargo_value <= 0.0:
+            errors.append("Cargo value is required.")
+        if weight <= 0.0:
+            errors.append("Weight is required.")
 
     elif service == "Customs Brokerage":
         country_origin = temp_details.get("country_origin", [])
