@@ -1215,6 +1215,16 @@ def change_page(new_page):
     st.session_state["page"] = new_page
 
 def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
+    has_pickup = dataframe["pickup_address"].notna() & (dataframe["pickup_address"].astype(str).str.strip() != "")
+    has_delivery = dataframe["delivery_address"].notna() & (dataframe["delivery_address"].astype(str).str.strip() != "")
+
+    if has_pickup.any() or has_delivery.any():
+        has_routes_info = dataframe["routes_info"].notna() & (dataframe["routes_info"].astype(str).str.strip() != "")
+        pattern = r"(?i)(colombia|united states)"
+        routes_matches = dataframe["routes_info"].astype(str).str.contains(pattern, na=False, regex=True)
+        contains_routes_match = (has_routes_info & routes_matches).any()
+    else:
+        contains_routes_match = False
 
     temp_service = dataframe["service"].astype(str).str.replace("\n", ", ")
     is_ground = temp_service.str.contains(r"\bGround Transportation\b", na=False, regex=True)
@@ -1223,13 +1233,15 @@ def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
     attempts = 0
     while attempts < max_attempts:
         try:
-            if contains_ground: 
+            if contains_routes_match:
+                save_data_to_google_sheets(dataframe, sheet_id, "Ground Quotations")
+                save_data_to_google_sheets(dataframe, sheet_id, "All Quotes")  # CAMBIAR A All Quotes si es necesario
+            elif contains_ground:
                 save_data_to_google_sheets(dataframe, sheet_id, "Ground Quotations")
                 if temp_service.str.contains(",").any():
-                    save_data_to_google_sheets(dataframe, sheet_id, "All Quotes")
+                    save_data_to_google_sheets(dataframe, sheet_id, "All Quotes")  # CAMBIAR A All Quotes si es necesario
             else:
-                save_data_to_google_sheets(dataframe, sheet_id, "All Quotes")
-
+                save_data_to_google_sheets(dataframe, sheet_id, "All Quotes")  # CAMBIAR A All Quotes si es necesario
             return 
 
         except Exception as e:
