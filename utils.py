@@ -10,6 +10,7 @@ from datetime import datetime
 import json
 import os
 import pandas as pd
+import re
 
 SERVICES_FILE = "services.json"
 TEMP_DIR = "temp_uploads"
@@ -1215,16 +1216,29 @@ def change_page(new_page):
     st.session_state["page"] = new_page
 
 def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
-    has_pickup = dataframe["pickup_address"].notna() & (dataframe["pickup_address"].astype(str).str.strip() != "")
-    has_delivery = dataframe["delivery_address"].notna() & (dataframe["delivery_address"].astype(str).str.strip() != "")
+    #has_pickup = dataframe["pickup_address"].notna() & (dataframe["pickup_address"].astype(str).str.strip() != "")
+    #has_delivery = dataframe["delivery_address"].notna() & (dataframe["delivery_address"].astype(str).str.strip() != "")
 
-    if has_pickup.any() or has_delivery.any():
-        has_routes_info = dataframe["routes_info"].notna() & (dataframe["routes_info"].astype(str).str.strip() != "")
-        pattern = r"(?i)(colombia|united states)"
-        routes_matches = dataframe["routes_info"].astype(str).str.contains(pattern, na=False, regex=True)
-        contains_routes_match = (has_routes_info & routes_matches).any()
-    else:
-        contains_routes_match = False
+    pattern = r"(?i)(colombia|united states)"
+
+    def check_routes(row):
+        routes = str(row["routes_info"]).split("\n")
+        pickup_match = False
+        delivery_match = False
+
+        for route in routes:
+            parts = route.split("→")
+            origin = parts[0].strip() if len(parts) >= 1 else ""
+            destination = parts[-1].strip() if len(parts) >= 2 else ""
+
+            if row["pickup_address"] and re.search(pattern, origin):
+                pickup_match = True
+            if row["delivery_address"] and re.search(pattern, destination):
+                delivery_match = True
+
+        return pickup_match or delivery_match
+
+    contains_routes_match = dataframe.apply(check_routes, axis=1).any()
 
     temp_service = dataframe["service"].astype(str).str.replace("\n", ", ")
     is_ground = temp_service.str.contains(r"\bGround Transportation\b", na=False, regex=True)
@@ -1242,7 +1256,7 @@ def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
                     save_data_to_google_sheets(dataframe, sheet_id, "All Quotes")  # CAMBIAR A All Quotes si es necesario
             else:
                 save_data_to_google_sheets(dataframe, sheet_id, "All Quotes")  # CAMBIAR A All Quotes si es necesario
-            return 
+            return
 
         except Exception as e:
             attempts += 1

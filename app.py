@@ -557,7 +557,6 @@ if st.session_state["completed"]:
                                                 grouped_record["routes_info"].add(
                                                     f"Route {i + 1}: {r['country_origin']} ({r['port_origin']}) → {r['country_destination']} ({r['port_destination']})"
                                                 )
-                                                print(grouped_record["routes_info"])
 
                                     # **4️⃣ Información de Paquetes**
                                     if "packages" in details:
