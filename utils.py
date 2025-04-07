@@ -1216,8 +1216,6 @@ def change_page(new_page):
     st.session_state["page"] = new_page
 
 def save_to_google_sheets(dataframe, sheet_id, max_attempts=5):
-    #has_pickup = dataframe["pickup_address"].notna() & (dataframe["pickup_address"].astype(str).str.strip() != "")
-    #has_delivery = dataframe["delivery_address"].notna() & (dataframe["delivery_address"].astype(str).str.strip() != "")
 
     pattern = r"(?i)(colombia|united states)"
 
