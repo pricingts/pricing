@@ -140,7 +140,7 @@ if st.session_state["completed"]:
             "Please select a Sales Representative*",
             ["-- Sales Representative --", "Pedro Luis Bruges", "Andrés Consuegra", "Ivan Zuluaga", "Sharon Zuñiga",
             "Johnny Farah", "Felipe Hoyos", "Jorge Sánchez",
-            "Irina Paternina", "Stephanie Bruges"],
+            "Irina Paternina", "Stephanie Bruges", "Pricing"],
             key="commercial"
         )
 
